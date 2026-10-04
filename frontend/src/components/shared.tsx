@@ -12,6 +12,7 @@ const OUTCOME_STYLE: Record<Outcome, string> = {
   DENIED: "bg-rose-100 text-rose-800 border-rose-200",
   ABSTAINED: "bg-zinc-100 text-zinc-700 border-zinc-200",
   BLOCKED: "bg-rose-100 text-rose-800 border-rose-200",
+  CANCELLED: "bg-zinc-100 text-zinc-700 border-zinc-200",
 }
 
 const OUTCOME_LABEL: Record<Outcome, string> = {
@@ -21,6 +22,7 @@ const OUTCOME_LABEL: Record<Outcome, string> = {
   DENIED: "Denegado",
   ABSTAINED: "Fuera de alcance",
   BLOCKED: "Bloqueado",
+  CANCELLED: "Cancelado por el cliente",
 }
 
 export function OutcomeBadge({ outcome }: { outcome: Outcome }) {

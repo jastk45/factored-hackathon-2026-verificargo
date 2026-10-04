@@ -1,5 +1,5 @@
 """Escenarios de demostración: clientes reales del dataset elegidos para
-mostrar cada camino. Los comparten la API y la UI de Streamlit."""
+mostrar cada camino. Los usa la API para la interfaz web."""
 
 from __future__ import annotations
 

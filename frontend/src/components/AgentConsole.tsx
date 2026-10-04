@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { CheckCircle2, CircleHelp, Clock, FileJson, Inbox, RefreshCw, XCircle } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { CheckCircle2, CircleHelp, Clock, FileJson, Inbox, LockKeyhole, RefreshCw, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,18 +22,39 @@ const DECISION_LABEL: Record<string, string> = {
   info_requested: "Información pedida",
 }
 
-function CaseCard({ item, onResolved }: { item: QueueItem; onResolved: () => void }) {
+function resultText(item: QueueItem) {
+  const r = item.result
+  if (!r) return null
+  if (r.case_id) return `disputa ${r.case_id} creada · verificada al releer`
+  if (r.existing_case_id) return `ya existía la disputa ${r.existing_case_id}; no se abrió otra`
+  return null
+}
+
+function CaseCard({ item, token, onResolved }: { item: QueueItem; token: string; onResolved: () => void }) {
   const p = item.package
   const [note, setNote] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const resolve = async (decision: string) => {
-    await api.resolve(p.handoff_id, decision, note)
-    onResolved()
+    setBusy(true)
+    setError(null)
+    try {
+      await api.resolve(token, p.handoff_id, decision, note)
+      onResolved()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge className={cn("uppercase", PRIORITY[p.priority])}>{p.priority}</Badge>
+          {item.status === "info_requested" && (
+            <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-800">esperando al cliente</Badge>
+          )}
           <span className="font-mono text-sm font-medium">{p.handoff_id}</span>
           <span className="text-sm text-muted-foreground">
             {p.country} · {p.language.toUpperCase()} · {p.customer_ref}
@@ -116,13 +137,16 @@ function CaseCard({ item, onResolved }: { item: QueueItem; onResolved: () => voi
         <Separator />
         <div className="flex flex-wrap items-center gap-2">
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota del agente" className="h-8 max-w-sm" />
-          <Button size="sm" onClick={() => resolve("approved")}>
-            <CheckCircle2 className="size-3.5" /> Aprobar disputa
+          <Button size="sm" onClick={() => resolve("approved")} disabled={busy || !item.can_approve}
+            title={item.can_approve ? "Abre la disputa y la verifica al releer" : "No hay una transacción verificada para disputar"}>
+            <CheckCircle2 className="size-3.5" /> Aprobar y abrir disputa
           </Button>
-          <Button size="sm" variant="outline" onClick={() => resolve("info_requested")}>
-            <CircleHelp className="size-3.5" /> Pedir información
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => resolve("rejected")}>
+          {item.status === "pending" && (
+            <Button size="sm" variant="outline" onClick={() => resolve("info_requested")} disabled={busy}>
+              <CircleHelp className="size-3.5" /> Pedir información
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => resolve("rejected")} disabled={busy}>
             <XCircle className="size-3.5" /> Rechazar
           </Button>
           <Collapsible className="ml-auto">
@@ -136,19 +160,62 @@ function CaseCard({ item, onResolved }: { item: QueueItem; onResolved: () => voi
             </CollapsibleContent>
           </Collapsible>
         </div>
+        {error && <p className="text-sm text-rose-700">{error}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+function Login({ onToken }: { onToken: (token: string) => void }) {
+  const [code, setCode] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const submit = async () => {
+    setError(null)
+    try {
+      onToken((await api.agentLogin(code)).token)
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+  return (
+    <Card className="mx-auto max-w-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <LockKeyhole className="size-4" /> Consola del agente
+        </CardTitle>
+        <CardDescription>
+          La cola tiene datos de clientes: solo la abre un agente autenticado. En producción, SSO del banco; en la demo,
+          el código de acceso de prueba documentado en el README.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); submit() }}>
+          <Input type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código de acceso" />
+          <Button type="submit" disabled={!code}>Entrar</Button>
+        </form>
+        {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
       </CardContent>
     </Card>
   )
 }
 
 export function AgentConsole({ refreshKey }: { refreshKey: number }) {
+  const [token, setToken] = useState<string | null>(null)
   const [pending, setPending] = useState<QueueItem[]>([])
-  const [resolved, setResolved] = useState<QueueItem[]>([])
-  const load = () => {
-    api.handoffs("pending").then(setPending)
-    api.handoffs("resolved").then(setResolved)
-  }
-  useEffect(load, [refreshKey])
+  const [waiting, setWaiting] = useState<QueueItem[]>([])
+  const [closed, setClosed] = useState<QueueItem[]>([])
+  const load = useCallback(() => {
+    if (!token) return
+    const fail = () => setToken(null)
+    api.handoffs(token, "pending").then(setPending).catch(fail)
+    api.handoffs(token, "info_requested").then(setWaiting).catch(fail)
+    api.handoffs(token, "closed").then(setClosed).catch(fail)
+  }, [token])
+  useEffect(() => {
+    load()
+  }, [load, refreshKey])
+
+  if (!token) return <Login onToken={setToken} />
 
   return (
     <div className="space-y-4">
@@ -172,17 +239,26 @@ export function AgentConsole({ refreshKey }: { refreshKey: number }) {
           </CardContent>
         </Card>
       ) : (
-        pending.map((item) => <CaseCard key={item.package.handoff_id} item={item} onResolved={load} />)
+        pending.map((item) => <CaseCard key={item.package.handoff_id} item={item} token={token} onResolved={load} />)
       )}
-      {resolved.length > 0 && (
+      {waiting.length > 0 && (
+        <>
+          <h3 className="pt-2 text-sm font-semibold">Esperando al cliente ({waiting.length}) · siguen abiertos</h3>
+          {waiting.map((item) => (
+            <CaseCard key={item.package.handoff_id} item={item} token={token} onResolved={load} />
+          ))}
+        </>
+      )}
+      {closed.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Resueltos ({resolved.length})</CardTitle>
+            <CardTitle className="text-base">Cerrados ({closed.length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
-            {resolved.slice(-8).reverse().map((r) => (
+            {closed.slice(-8).reverse().map((r) => (
               <p key={r.package.handoff_id}>
                 <span className="font-mono">{r.package.handoff_id}</span> → {DECISION_LABEL[r.status] ?? r.status}
+                {resultText(r) ? <span className="text-emerald-700"> · {resultText(r)}</span> : null}
                 {r.agent_note ? <span className="text-muted-foreground"> · {r.agent_note}</span> : null}
               </p>
             ))}

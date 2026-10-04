@@ -35,6 +35,26 @@ AUDIT_LOG = REPO_ROOT / "warehouse" / "audit_log.jsonl"
 # Última fecha con datos: el "hoy" del sistema.
 TODAY = date(2026, 6, 18)
 
+COUNTRY_CODES = {"México": "MX", "Mexico": "MX", "Colombia": "CO", "Argentina": "AR"}
+
+
+def customer_country(customer_id: str, con: duckdb.DuckDBPyConnection | None = None) -> str:
+    """País del cliente según el registro de clientes, no según lo que diga nadie.
+
+    En producción lo pondría el servicio de identidad en el token. Acá se lee
+    del gold: es el dato confiable que tenemos. Un cliente sin país conocido
+    es un error, no un "MX" por defecto.
+    """
+    con = con or duckdb.connect()
+    safe = customer_id.replace("'", "''")
+    row = con.sql(
+        f"""SELECT country FROM read_parquet('{(GOLD / 'customer_360_min.parquet').as_posix()}')
+            WHERE customer_id = '{safe}'"""
+    ).fetchone()
+    if row is None or row[0] not in COUNTRY_CODES:
+        raise LookupError(f"país desconocido para el cliente {customer_id}")
+    return COUNTRY_CODES[row[0]]
+
 
 @dataclass
 class Evidence:
@@ -96,14 +116,24 @@ class Toolbox:
     cliente: no hay parámetro para hacerlo.
     """
 
-    def __init__(self, session: Session, con: duckdb.DuckDBPyConnection | None = None):
+    def __init__(
+        self,
+        session: Session,
+        con: duckdb.DuckDBPyConnection | None = None,
+        disputes: dict[str, dict[str, Any]] | None = None,
+        actor: str | None = None,
+    ):
         self.session = session
         self.con = con or duckdb.connect()
         # Estado de las acciones de escritura. En producción sería el core
-        # bancario; acá es un almacén en memoria con la misma forma.
-        self._disputes: dict[str, dict[str, Any]] = {}
+        # bancario; acá es un almacén en memoria con la misma forma. La API
+        # pasa un almacén compartido (el cliente y el agente humano ven las
+        # mismas disputas); la evaluación usa uno por caso.
+        self._disputes: dict[str, dict[str, Any]] = {} if disputes is None else disputes
         self._blocked_cards: set[str] = set()
         self._handoffs: dict[str, dict[str, Any]] = {}
+        # Quién ejecuta: el cliente (None) o un agente humano ("agent:<id>").
+        self.actor = actor
 
     # --- lectura -------------------------------------------------------
 
@@ -291,6 +321,22 @@ class Toolbox:
         )
         return ToolResult(ok=True, verified=True, data={"count": n})
 
+    def open_dispute_for(self, transaction_id: str) -> ToolResult:
+        """¿Ya hay una disputa abierta sobre esta transacción? (GATE-05)"""
+        existing = next(
+            (d for d in self._disputes.values()
+             if d["transaction_id"] == transaction_id
+             and d["customer_id"] == self.session.customer_id
+             and d["status"] == "Open"), None)
+        if existing is None:
+            return ToolResult(ok=True, verified=True, data={"case_id": None})
+        return ToolResult(
+            ok=True, verified=True, data={"case_id": existing["case_id"]},
+            evidence=[Evidence(_new_id("EV"), "tool:open_dispute_for",
+                               f"Disputa abierta {existing['case_id']} sobre {transaction_id}",
+                               existing)],
+        )
+
     # --- escritura -----------------------------------------------------
 
     def create_dispute_case(
@@ -306,13 +352,13 @@ class Toolbox:
         if not owned.ok:
             raise ToolError("No se puede disputar una transacción que no es tuya")
 
-        existing = [
-            d for d in self._disputes.values()
-            if d["transaction_id"] == transaction_id and d["status"] == "Open"
-        ]
-        if existing:
+        existing = self.open_dispute_for(transaction_id)
+        if existing.data["case_id"]:
+            # No es un fallo de verificación: la disputa existe y se comprobó.
             return ToolResult(ok=False, verified=True,
-                              error=f"Ya existe la disputa {existing[0]['case_id']}")
+                              data={"existing_case_id": existing.data["case_id"]},
+                              evidence=existing.evidence,
+                              error=f"Ya existe la disputa {existing.data['case_id']}")
 
         case_id = _new_id("DSP")
         self._disputes[case_id] = {
@@ -322,6 +368,7 @@ class Toolbox:
             "reason": reason,
             "status": "Open",
             "created_at": datetime.now(),
+            "created_by": self.actor or "customer",
         }
 
         # RE-LECTURA: no basta con haber escrito.
@@ -334,7 +381,7 @@ class Toolbox:
 
         _audit("create_dispute_case", self.session,
                {"case_id": case_id, "transaction_id": transaction_id,
-                "verified": verified})
+                "verified": verified, "actor": self.actor or "customer"})
 
         if not verified:
             return ToolResult(ok=False, verified=False,

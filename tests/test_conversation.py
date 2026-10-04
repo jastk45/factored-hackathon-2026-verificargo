@@ -315,3 +315,15 @@ def test_the_prompt_has_no_copyable_example_amounts() -> None:
     import re as _re
     assert not _re.search(r"\d{3}[.,]\d{3}", SLOT_PROMPT), (
         "un monto de ejemplo en el prompt puede terminar copiado como extracción")
+
+
+def test_exact_amount_or_date_picks_the_single_matching_candidate() -> None:
+    from datetime import date
+    from orchestrator import narrow_exact
+    cands = [{"amount": 380.51, "transaction_date": date(2026, 6, 15)},
+             {"amount": 405.93, "transaction_date": date(2026, 6, 14)}]
+    assert narrow_exact(cands, {"amount": 380.51}) == cands[:1]
+    assert narrow_exact(cands, {"amount": 390.0, "date": "2026-06-14"}) == cands[1:]
+    # Un monto redondeado no coincide con ninguna: se sigue preguntando.
+    assert narrow_exact(cands, {"amount": 390.0}) == cands
+    assert narrow_exact(cands, {}) == cands

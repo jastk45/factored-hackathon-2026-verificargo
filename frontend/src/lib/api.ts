@@ -1,6 +1,6 @@
 // Cliente tipado de la API de VerifiCargo (app/api.py).
 
-export type Outcome = "RESOLVED" | "CLARIFY" | "ESCALATED" | "DENIED" | "ABSTAINED" | "BLOCKED"
+export type Outcome = "RESOLVED" | "CLARIFY" | "ESCALATED" | "DENIED" | "ABSTAINED" | "BLOCKED" | "CANCELLED"
 
 export interface Scenario {
   id: string
@@ -57,7 +57,7 @@ export interface TurnResult {
   awaiting: "intent" | "details" | "confirmation" | null
   options: { key: string; label: string }[]
   grounding_violations: string[]
-  handoff: HandoffPackage | null
+  handoff: { handoff_id: string | null; queued: boolean; error?: string } | null
   error: string | null
 }
 
@@ -90,18 +90,26 @@ export interface Txn {
   channel: string
 }
 
+export type QueueStatus = "pending" | "info_requested" | "closed"
+
 export interface QueueItem {
-  status: string
+  status: "pending" | "info_requested" | "approved" | "rejected"
   queued_at: string
   resolved_at?: string
+  agent?: string
   agent_note?: string
+  can_approve: boolean
+  result?: { action: string; case_id?: string; existing_case_id?: string; verified: boolean; evidence_ids: string[] }
   package: HandoffPackage
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+async function call<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -129,11 +137,15 @@ export const api = {
       body: JSON.stringify({ otp }),
     }),
   transactions: (cid: string) => call<Txn[]>(`/api/conversations/${cid}/transactions`),
-  handoffs: (status: "pending" | "resolved") => call<QueueItem[]>(`/api/handoffs?status=${status}`),
-  resolve: (id: string, decision: string, note: string) =>
-    call<{ ok: boolean }>(`/api/handoffs/${id}/resolve`, {
-      method: "POST",
-      body: JSON.stringify({ decision, note }),
-    }),
-  evaluation: () => call<Record<string, any>>("/api/eval"),
+  agentLogin: (access_code: string) =>
+    call<{ token: string }>("/api/agent/login", { method: "POST", body: JSON.stringify({ access_code }) }),
+  handoffs: (token: string, status: QueueStatus) =>
+    call<QueueItem[]>(`/api/handoffs?status=${status}`, undefined, token),
+  resolve: (token: string, id: string, decision: string, note: string) =>
+    call<{ ok: boolean; item: QueueItem }>(
+      `/api/handoffs/${id}/resolve`,
+      { method: "POST", body: JSON.stringify({ decision, note }) },
+      token,
+    ),
+  evaluation: () => call<Record<string, unknown>>("/api/eval"),
 }

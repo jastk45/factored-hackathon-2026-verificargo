@@ -25,4 +25,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Componentes generados por shadcn: exportan sus variantes (cva) junto al
+    // componente por diseño. Solo afecta al hot reload en desarrollo.
+    files: ['src/components/ui/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

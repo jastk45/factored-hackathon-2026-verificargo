@@ -5,7 +5,16 @@ encola acá. La consola CRM lee la cola y registra la decisión del agente.
 
 Es un archivo JSONL: suficiente para un prototipo de un solo proceso. En
 producción sería la cola del CRM real detrás de un adaptador con esta misma
-interfaz (`enqueue`, `pending`, `resolve`).
+interfaz (`enqueue`, `get`, `pending`, `awaiting_customer`, `closed`, `update`).
+
+Estados de un caso:
+    pending         esperando a un agente
+    info_requested  el agente pidió datos al cliente: sigue ABIERTO
+    approved        el agente aprobó y la acción se ejecutó y verificó
+    rejected        el agente lo cerró sin acción
+
+`enqueue` y `update` releen lo que escribieron: un caso que no aparece en la
+cola no se informa como encolado.
 """
 
 from __future__ import annotations
@@ -19,6 +28,15 @@ from typing import Any
 from handoff import build_package, contains_card_number
 
 QUEUE = Path(__file__).resolve().parent.parent / "warehouse" / "handoff_queue.jsonl"
+# Escalamientos que no se pudieron encolar: alguien de operaciones los revisa.
+DEAD_LETTER = QUEUE.with_name("handoff_deadletter.jsonl")
+
+OPEN_STATUSES = ("pending", "info_requested")
+CLOSED_STATUSES = ("approved", "rejected")
+
+
+class QueueError(Exception):
+    """El caso no quedó en la cola (o no se pudo actualizar)."""
 
 PRIORITY_ORDER = {"critical": 0, "high": 1, "normal": 2, "low": 3}
 
@@ -69,16 +87,19 @@ def open_questions(turn) -> list[str]:
     return questions
 
 
-def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[str, Any] | None:
-    """Arma el paquete del turno escalado y lo encola. Devuelve el paquete.
+def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[str, Any]:
+    """Arma el paquete del turno escalado, lo encola y lo relee.
 
     `customer_message` es lo último que el cliente ESCRIBIÓ: si el turno que
     escaló fue la elección de un botón, el texto del turno no dice nada útil.
+    Lanza QueueError si el turno no tiene ticket verificado o si el caso no
+    aparece en la cola al releerla.
     """
     ticket = next((a.get("ticket_id") for a in turn.actions_taken
-                   if a["action"] == "create_handoff_ticket" and a.get("ticket_id")), None)
+                   if a["action"] == "create_handoff_ticket" and a.get("verified")
+                   and a.get("ticket_id")), None)
     if ticket is None:
-        return None
+        raise QueueError("el turno escaló sin ticket verificado")
 
     intent = (turn.extracted or {}).get("intent")
     summary = INTENT_SUMMARY[turn.language].get(intent, INTENT_SUMMARY[turn.language][None])
@@ -90,12 +111,34 @@ def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[
         request_summary=f"{summary}. Mensaje: \"{excerpt}\"",
         transaction=txn, open_questions=open_questions(turn),
     )
+    # Lo que el agente necesita para EJECUTAR si aprueba. Queda del lado del
+    # servidor: la API no lo devuelve a la consola.
+    internal = {
+        "customer_id": session.customer_id, "country": session.country,
+        "language": turn.language, "intent": (turn.extracted or {}).get("intent"),
+        "transaction_id": txn["transaction_id"] if txn else None,
+    }
     record = {"status": "pending", "queued_at": datetime.now().isoformat(timespec="seconds"),
-              "package": json.loads(package.model_dump_json())}
+              "package": json.loads(package.model_dump_json()), "internal": internal}
     QUEUE.parent.mkdir(parents=True, exist_ok=True)
     with QUEUE.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    # RE-LECTURA: el caso tiene que estar en la cola, tal cual.
+    stored = get(ticket)
+    if stored is None or stored["status"] != "pending":
+        raise QueueError(f"el caso {ticket} no aparece en la cola al releerla")
     return record["package"]
+
+
+def dead_letter(turn, reason: str) -> None:
+    """Registra un escalamiento que no llegó a la cola, para recuperarlo a mano."""
+    DEAD_LETTER.parent.mkdir(parents=True, exist_ok=True)
+    with DEAD_LETTER.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({
+            "at": datetime.now().isoformat(timespec="seconds"), "reason": reason,
+            "escalation_reasons": turn.escalation_reasons, "error": turn.error,
+        }, ensure_ascii=False) + "\n")
 
 
 def _load() -> list[dict[str, Any]]:
@@ -104,22 +147,52 @@ def _load() -> list[dict[str, Any]]:
     return [json.loads(l) for l in QUEUE.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
-def pending() -> list[dict[str, Any]]:
-    items = [r for r in _load() if r["status"] == "pending"]
+def get(handoff_id: str) -> dict[str, Any] | None:
+    return next((r for r in _load() if r["package"]["handoff_id"] == handoff_id), None)
+
+
+def _by_priority(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(items, key=lambda r: (PRIORITY_ORDER.get(r["package"]["priority"], 9),
                                         r["package"]["sla"].get("days_remaining") or 999))
 
 
-def resolved() -> list[dict[str, Any]]:
-    return [r for r in _load() if r["status"] != "pending"]
+def pending() -> list[dict[str, Any]]:
+    return _by_priority([r for r in _load() if r["status"] == "pending"])
 
 
-def resolve(handoff_id: str, decision: str, agent_note: str) -> None:
+def awaiting_customer() -> list[dict[str, Any]]:
+    """Casos donde el agente pidió información: siguen abiertos, no resueltos."""
+    return _by_priority([r for r in _load() if r["status"] == "info_requested"])
+
+
+def closed() -> list[dict[str, Any]]:
+    return [r for r in _load() if r["status"] in CLOSED_STATUSES]
+
+
+def update(handoff_id: str, status: str, agent: str, note: str,
+           result: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Cambia el estado de un caso abierto y lo relee. Devuelve el registro."""
+    if status not in OPEN_STATUSES + CLOSED_STATUSES:
+        raise QueueError(f"estado desconocido: {status}")
     rows = _load()
-    for r in rows:
-        if r["package"]["handoff_id"] == handoff_id:
-            r["status"] = decision
-            r["resolved_at"] = datetime.now().isoformat(timespec="seconds")
-            r["agent_note"] = agent_note
+    target = next((r for r in rows if r["package"]["handoff_id"] == handoff_id), None)
+    if target is None:
+        raise QueueError(f"no existe el caso {handoff_id}")
+    if target["status"] not in OPEN_STATUSES:
+        raise QueueError(f"el caso {handoff_id} ya está cerrado ({target['status']})")
+    now = datetime.now().isoformat(timespec="seconds")
+    target["status"] = status
+    target["agent"] = agent
+    target["agent_note"] = note
+    target.setdefault("history", []).append({"at": now, "status": status, "agent": agent,
+                                             "note": note, "result": result})
+    if result is not None:
+        target["result"] = result
+    if status in CLOSED_STATUSES:
+        target["resolved_at"] = now
     QUEUE.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
                      encoding="utf-8")
+    stored = get(handoff_id)
+    if stored is None or stored["status"] != status:
+        raise QueueError(f"el cambio de {handoff_id} no quedó registrado")
+    return stored

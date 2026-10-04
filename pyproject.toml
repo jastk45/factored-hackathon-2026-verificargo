@@ -14,7 +14,6 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "pyyaml>=6.0.3",
     "sentence-transformers>=6.1.0",
-    "streamlit>=1.65.0",
     "uvicorn[standard]>=0.54.0",
 ]
 

@@ -68,6 +68,7 @@ class Outcome(str, Enum):
     DENIED = "DENIED"
     ABSTAINED = "ABSTAINED"
     BLOCKED = "BLOCKED"
+    CANCELLED = "CANCELLED"   # el cliente desistió antes de la acción: no se ejecutó nada
 
 
 class Extractor(Protocol):
@@ -126,10 +127,38 @@ CARD_RISK = re.compile(
     re.IGNORECASE,
 )
 
+# Confirmación de una acción (ACT-01). Tiene que ser inequívoca: un "sí" que
+# arrastra una negación o un "pero" no autoriza nada. Revisión externa: "Sí,
+# pero no abras la disputa todavía" abría la disputa, porque solo se miraba
+# el comienzo del mensaje.
 AFFIRMATIVE = re.compile(
     r"^\s*(s[ií]|sim|confirmo|dale|ok|okay|de acuerdo|claro|correcto|"
     r"pode ser|pode|isso|exato|adelante|hazlo|fa[cç]a)\b", re.IGNORECASE,
 )
+NEGATION = re.compile(
+    r"\b(no|não|nao|nunca|jam[aá]s|cancel\w*|esper[aeáé]\w*|aguard\w*|todav[ií]a|ainda|"
+    r"despu[eé]s|depois|det[eé]n\w*|pare)\b", re.IGNORECASE,
+)
+ADVERSATIVE = re.compile(
+    r"\b(pero|mas|sin embargo|aunque|embora|por[eé]m|contudo|salvo|excepto|antes)\b",
+    re.IGNORECASE,
+)
+MAX_CONFIRMATION_WORDS = 8
+
+
+def read_confirmation(message: str) -> str | None:
+    """"yes", "no" o None (no es una respuesta clara: no autoriza nada)."""
+    text = message.strip()
+    if text.lower() == "choice:confirm":
+        return "yes"
+    if text.lower() == "choice:cancel":
+        return "no"
+    if NEGATION.search(text):
+        return "no"
+    if (AFFIRMATIVE.match(text) and not ADVERSATIVE.search(text)
+            and len(text.split()) <= MAX_CONFIRMATION_WORDS):
+        return "yes"
+    return None
 
 
 def detect_language(message: str, default: str = "es") -> str:
@@ -176,9 +205,21 @@ T = {
         "es": "Pasé tu caso a un especialista (ticket {ticket}). No vas a tener que repetir lo que ya me contaste.",
         "pt": "Encaminhei seu caso a um especialista (protocolo {ticket}). Você não vai precisar repetir o que já me contou.",
     },
+    # Solo cuando NO se pudo registrar el traspaso: no se promete un contacto
+    # que nadie va a hacer.
     "escalated_no_ticket": {
-        "es": "Tu caso necesita revisión de un especialista. Te vamos a contactar.",
-        "pt": "Seu caso precisa da revisão de um especialista. Entraremos em contato.",
+        "es": "Tu caso necesita un especialista, pero no pude registrarlo en este momento. "
+              "Comunicate con la línea del banco para que te atiendan. No hice ningún cambio en tu cuenta.",
+        "pt": "Seu caso precisa de um especialista, mas não consegui registrá-lo agora. "
+              "Fale com a central do banco para ser atendido. Não fiz nenhuma alteração na sua conta.",
+    },
+    "cancelled": {
+        "es": "De acuerdo: no abrí ninguna disputa. Si querés retomarlo, contame el monto, la fecha y el comercio del cargo.",
+        "pt": "Combinado: não abri nenhuma contestação. Se quiser retomar, me diga o valor, a data e o estabelecimento.",
+    },
+    "duplicate": {
+        "es": "Ya tenés abierta la disputa {case_id} sobre ese cargo, así que no abrí otra.",
+        "pt": "Você já tem a contestação {case_id} aberta sobre essa cobrança, então não abri outra.",
     },
     "abstain": {
         "es": "Eso está fuera de lo que puedo resolver por acá: atiendo disputas de cargos con tarjeta. "
@@ -229,6 +270,26 @@ INTENT_GROUP = {
 
 
 GROUP_OF = None  # se completa abajo
+
+
+def narrow_exact(candidates: list[dict[str, Any]], fields: dict[str, Any]) -> list[dict[str, Any]]:
+    """La búsqueda usa ventanas (±10% de monto, ±5 días); si el cliente dio el
+    monto al centavo o la fecha exacta y eso deja una sola candidata, es esa.
+
+    Monto y fecha están anclados al mensaje del cliente (llm.ground), así que
+    no los inventa el modelo. El comercio no se usa para filtrar: no está
+    anclado. Motivo (eval-v1, B11-04): con 380,51 USD y la fecha exacta
+    quedaban dos candidatas y el caso escalaba sin llegar a la acción.
+    """
+    narrowed = candidates
+    amount, day = fields.get("amount"), fields.get("date")
+    if amount is not None and len(narrowed) > 1:
+        exact = [c for c in narrowed if abs(float(c["amount"]) - float(amount)) < 0.005]
+        narrowed = exact or narrowed
+    if day is not None and len(narrowed) > 1:
+        exact = [c for c in narrowed if str(c["transaction_date"]) == str(day)]
+        narrowed = exact or narrowed
+    return narrowed
 
 
 def money(value: float) -> str:
@@ -314,17 +375,27 @@ class Orchestrator:
         timeout de la base), el turno termina en ESCALATE con el error
         registrado: el fallback seguro es pasar a un humano, nunca inventar.
         """
+        scope: dict[str, Any] = {}
         try:
             return self._handle(token, message, toolbox_factory,
-                                clarification_turns, confirmed, context)
+                                clarification_turns, confirmed, context, scope)
         except Exception as exc:  # noqa: BLE001 - es el fallback de último recurso
             turn = Turn(outcome=Outcome.ESCALATED, message=message,
-                        language=detect_language(message))
-            turn.states.append(State.ESCALATE)
+                        language=(context or {}).get("language") or detect_language(message))
             turn.escalation_reasons.append(
                 f"SYSTEM: error inesperado ({type(exc).__name__}: {exc})"[:200])
             turn.error = f"{type(exc).__name__}: {exc}"
-            self._say(turn, "escalated_no_ticket")
+            # Escalar también acá significa crear el ticket y verificarlo. Si
+            # ni eso funciona, la respuesta lo dice: no se promete un contacto.
+            try:
+                box = scope.get("box") or toolbox_factory(verify_token(token))
+                self._escalate(turn, box, {"reason": "system_error", "detail": turn.error})
+            except Exception as ticket_exc:  # noqa: BLE001
+                turn.states.append(State.ESCALATE)
+                turn.actions_not_taken.append({
+                    "action": "create_handoff_ticket",
+                    "reason": f"{type(ticket_exc).__name__}: {ticket_exc}"[:160]})
+                self._say(turn, "escalated_no_ticket")
             return turn
 
     def _handle(
@@ -335,22 +406,31 @@ class Orchestrator:
         clarification_turns: int = 0,
         confirmed: bool = False,
         context: dict[str, Any] | None = None,
+        scope: dict[str, Any] | None = None,
     ) -> Turn:
         started = time.perf_counter()
         turn = Turn(outcome=Outcome.BLOCKED, message=message)
         context = dict(context or {})
+        scope = {} if scope is None else scope
         clarification_turns = max(clarification_turns, context.get("clarification_turns", 0))
+        box: Toolbox | None = None
 
         def finish(outcome: Outcome, error: str | None = None) -> Turn:
             turn.outcome = outcome
             turn.error = error
-            # DATA-03: ninguna cifra o fecha de la respuesta sin respaldo.
-            if turn.reply:
+            # DATA-03: ninguna cifra o fecha de la respuesta sin respaldo. Si
+            # falla, la respuesta no sale: el caso pasa a un humano, con ticket.
+            if turn.reply and outcome is not Outcome.BLOCKED:
                 facts = [e.fact for e in turn.evidence]
                 violations = check_grounded(turn.reply, facts + [str(v) for v in self._reply_constants()])
                 if violations:
                     turn.grounding_violations = violations
-                    self._say(turn, "escalated_no_ticket")
+                    turn.escalation_reasons.append("DATA-03: la respuesta citaba cifras sin evidencia")
+                    if box is not None and outcome is not Outcome.ESCALATED:
+                        self._escalate(turn, box, {"reason": "ungrounded_reply"})
+                        turn.outcome = Outcome.ESCALATED
+                    elif box is None:
+                        self._say(turn, "escalated_no_ticket")
             turn.latency_ms = int((time.perf_counter() - started) * 1000)
             return turn
 
@@ -363,7 +443,8 @@ class Orchestrator:
             self._say(turn, "blocked")
             return finish(Outcome.BLOCKED, str(exc))
 
-        box: Toolbox = toolbox_factory(session)
+        box = toolbox_factory(session)
+        scope["box"] = box
 
         # DETECT_LANG -------------------------------------------------
         turn.states.append(State.DETECT_LANG)
@@ -380,8 +461,18 @@ class Orchestrator:
         turn.states.append(State.UNDERSTAND)
         awaiting = context.get("awaiting")
 
-        # Confirmación pendiente: un "sí" no necesita pasar por el modelo.
-        if awaiting == "confirmation" and AFFIRMATIVE.match(message):
+        # Confirmación pendiente: un "sí" inequívoco no necesita pasar por el
+        # modelo; un "no" sin datos nuevos cancela; cualquier otra cosa se lee
+        # como corrección y vuelve a pedir confirmación. Nunca se actúa sin un sí.
+        answer = read_confirmation(message) if awaiting == "confirmation" else None
+        if answer == "no" and not CARD_RISK.search(message) and not re.search(r"\d", message):
+            turn.states.append(State.RESPOND)
+            turn.actions_not_taken.append({"action": "create_dispute_case",
+                                           "reason": "ACT-01: el cliente no confirmó"})
+            turn.extracted = dict(context.get("fields", {}))
+            self._say(turn, "cancelled")
+            return finish(Outcome.CANCELLED)
+        if answer == "yes":
             confirmed = True
             extracted = dict(context.get("fields", {}))
         elif awaiting == "intent" and self._chosen_group(message, context) is not None:
@@ -493,12 +584,15 @@ class Orchestrator:
             amount=extracted.get("amount"), currency=extracted.get("currency"),
             merchant=extracted.get("merchant"), on_date=extracted.get("date"),
         )
-        turn.candidates = found.data["candidates"]
+        turn.candidates = narrow_exact(found.data["candidates"], extracted)
         turn.evidence.extend(found.evidence)
         txn = turn.candidates[0] if len(turn.candidates) == 1 else None
 
         turn.states.append(State.CHECK_POLICY)
         recent = box.count_recent_unrecognized()
+        existing = box.open_dispute_for(txn["transaction_id"]) if txn else None
+        if existing is not None:
+            turn.evidence.extend(existing.evidence)
         facts = CaseFacts(
             session_customer_id=session.customer_id,
             country=session.country,
@@ -508,6 +602,7 @@ class Orchestrator:
             amount_usd=float(txn["amount_usd"]) if txn and txn["amount_usd"] is not None else None,
             amount_usd_source=txn["amount_usd_source"] if txn else None,
             candidate_count=len(turn.candidates),
+            existing_open_dispute=bool(existing and existing.data["case_id"]),
             intent=intent,
             unrecognized_charges_last_30d=recent.data["count"],
             clarification_turns=clarification_turns,
@@ -520,6 +615,10 @@ class Orchestrator:
 
         if outcome.decision is Decision.DENY:
             turn.states.append(State.DENY)
+            if outcome.message_key == "duplicate_dispute":
+                # GATE-05: se informa el caso que ya existe, no se abre otro.
+                self._say(turn, "duplicate", case_id=existing.data["case_id"])
+                return finish(Outcome.DENIED, outcome.message_key)
             turn.reply = self.engine.message(outcome.message_key, turn.language).format(
                 **{"days": "", "status": (txn or {}).get("transaction_status", ""),
                    "case_id": "", "count": "", **outcome.message_params})
@@ -598,6 +697,15 @@ class Orchestrator:
             return finish(Outcome.ESCALATED, str(exc))
 
         turn.states.append(State.VERIFY)
+        if created.verified and created.data.get("existing_case_id"):
+            # Otra conversación (o un agente) la abrió entre la consulta y la
+            # escritura: se informa la existente, comprobada.
+            turn.evidence.extend(created.evidence)
+            turn.actions_not_taken.append({"action": "create_dispute_case",
+                                           "reason": f"GATE-05: {created.error}"})
+            turn.policy_trace.append("GATE-05:FAIL:DENY")
+            self._say(turn, "duplicate", case_id=created.data["existing_case_id"])
+            return finish(Outcome.DENIED, "duplicate_dispute")
         if not created.verified:
             # No se informa una acción que no se pudo comprobar.
             turn.escalation_reasons.append("VERIFY: la acción no pudo verificarse")

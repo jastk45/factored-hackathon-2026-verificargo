@@ -107,8 +107,8 @@ def issue_token(
     return f"{body}.{_sign(body.encode())}"
 
 
-def verify_token(token: str) -> Session:
-    """Valida firma y expiración. Lanza SessionError si algo no cuadra."""
+def _verified_claims(token: str) -> dict:
+    """Firma, formato y expiración. Común a los tokens de cliente y de agente."""
     if not token or "." not in token:
         raise SessionError("token ausente o mal formado")
 
@@ -125,6 +125,15 @@ def verify_token(token: str) -> Session:
 
     if int(time.time()) >= claims["exp"]:
         raise SessionError("sesión expirada")
+    return claims
+
+
+def verify_token(token: str) -> Session:
+    """Valida firma y expiración. Lanza SessionError si algo no cuadra."""
+    claims = _verified_claims(token)
+    if claims.get("typ", "customer") != "customer":
+        # Un token de agente no es una sesión de cliente, aunque esté firmado.
+        raise SessionError("el token no es de una sesión de cliente")
 
     return Session(
         customer_id=claims["sub"],
@@ -155,3 +164,36 @@ def step_up(token: str, otp_code: str) -> str:
         AuthLevel.HIGH,
         ttl=session.seconds_remaining,
     )
+
+
+# --- agentes humanos ----------------------------------------------------
+# La consola del CRM no la usa un cliente: tiene su propio token, con rol.
+# Un token de cliente no abre la cola y uno de agente no sirve como sesión de
+# cliente (verify_token lo rechaza). En producción el rol vendría del SSO
+# corporativo; acá un código de acceso de prueba, documentado como el OTP.
+
+AGENT_TOKEN_TTL_SECONDS = 8 * 60 * 60
+
+
+@dataclass(frozen=True)
+class AgentSession:
+    agent_id: str
+    expires_at: int
+
+
+def agent_login(access_code: str, agent_id: str = "agente-demo") -> str:
+    expected = os.getenv("AGENT_ACCESS_CODE", "agente-demo-2026")
+    if not hmac.compare_digest(access_code.encode(), expected.encode()):
+        raise SessionError("código de acceso de agente incorrecto")
+    now = int(time.time())
+    claims = {"typ": "agent", "sub": agent_id, "role": "dispute_agent",
+              "iat": now, "exp": now + AGENT_TOKEN_TTL_SECONDS}
+    body = _b64(json.dumps(claims, separators=(",", ":")).encode())
+    return f"{body}.{_sign(body.encode())}"
+
+
+def verify_agent_token(token: str) -> AgentSession:
+    claims = _verified_claims(token)
+    if claims.get("typ") != "agent" or claims.get("role") != "dispute_agent":
+        raise SessionError("se requiere un token de agente")
+    return AgentSession(agent_id=claims["sub"], expires_at=claims["exp"])

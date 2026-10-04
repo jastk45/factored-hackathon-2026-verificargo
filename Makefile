@@ -1,6 +1,6 @@
 # VerifiCargo · comandos reproducibles. En Windows sin make, copiar el comando.
 
-.PHONY: setup data pipeline train eval test web serve ui docker
+.PHONY: setup data pipeline train eval test web serve docker
 
 setup:            ## dependencias exactas desde uv.lock
 	uv sync
@@ -37,8 +37,6 @@ web:              ## compila el frontend React
 serve:            ## API + frontend en http://localhost:8000
 	uv run python -m uvicorn api:app --app-dir app --port 8000
 
-ui:               ## interfaz alternativa en Streamlit (respaldo)
-	uv run streamlit run app/ui.py
 
 docker:           ## demo en contenedor, sin modelo
 	docker compose up --build

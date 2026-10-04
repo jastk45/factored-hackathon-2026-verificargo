@@ -27,7 +27,7 @@ const T = {
   es: {
     hello: "Hola", accounts: "Tu tarjeta de crédito", recent: "Movimientos recientes",
     notMine: "¿No lo reconocés?", open: "¿Un cargo que no reconocés?", assistant: "Asistente de disputas",
-    placeholder: "Escribí tu mensaje", confirm: "Sí, confirmo", otp: "Ingresá el código que te enviamos",
+    placeholder: "Escribí tu mensaje", confirm: "Sí, confirmo", cancel: "No, cancelar", otp: "Ingresá el código que te enviamos",
     verify: "Verificar", verified: "Identidad verificada", greeting:
       "Hola, soy el asistente de disputas. Contame qué cargo no reconocés: el monto, la fecha y el comercio me ayudan a encontrarlo.",
     date: "Fecha", merchant: "Comercio", amount: "Monto", status: "Estado",
@@ -35,7 +35,7 @@ const T = {
   pt: {
     hello: "Olá", accounts: "Seu cartão de crédito", recent: "Movimentações recentes",
     notMine: "Não reconhece?", open: "Uma cobrança que não reconhece?", assistant: "Assistente de contestações",
-    placeholder: "Escreva sua mensagem", confirm: "Sim, confirmo", otp: "Digite o código que enviamos",
+    placeholder: "Escreva sua mensagem", confirm: "Sim, confirmo", cancel: "Não, cancelar", otp: "Digite o código que enviamos",
     verify: "Verificar", verified: "Identidade verificada", greeting:
       "Olá, sou o assistente de contestações. Me conte qual cobrança não reconhece: valor, data e estabelecimento me ajudam a encontrá-la.",
     date: "Data", merchant: "Estabelecimento", amount: "Valor", status: "Situação",
@@ -109,7 +109,7 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
       setSession(r.session)
       setOtp("")
       // Con la identidad verificada, se reintenta la confirmación pendiente.
-      await send(t.confirm)
+      await send("choice:confirm", t.confirm)
     } catch (e) {
       setError(String(e))
     }
@@ -303,9 +303,15 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
                 <Button size="sm" onClick={verify} disabled={!otp || busy}>{t.verify}</Button>
               </div>
             ) : lastTurn?.awaiting === "confirmation" ? (
-              <Button size="sm" className="h-7 text-xs" onClick={() => send(t.confirm)} disabled={busy}>
-                {t.confirm}
-              </Button>
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs" onClick={() => send("choice:confirm", t.confirm)} disabled={busy}>
+                  {t.confirm}
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => send("choice:cancel", t.cancel)} disabled={busy}>
+                  {t.cancel}
+                </Button>
+              </div>
             ) : null}
             <form className="flex gap-2" onSubmit={(ev) => { ev.preventDefault(); send(input) }}>
               <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} />

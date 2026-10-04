@@ -11,8 +11,9 @@ Endpoints:
     POST /api/conversations                     {scenario_id}
     POST /api/conversations/{id}/messages       {message}
     POST /api/conversations/{id}/step-up        {otp}
-    GET  /api/handoffs?status=pending|resolved
-    POST /api/handoffs/{handoff_id}/resolve     {decision, note}
+    POST /api/agent/login                       {access_code}
+    GET  /api/handoffs?status=pending|info_requested|closed     (token de agente)
+    POST /api/handoffs/{handoff_id}/resolve     {decision, note} (token de agente)
     GET  /api/eval
 
 Estado de conversación en memoria del proceso: suficiente para la demo; en
@@ -37,7 +38,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(ROOT / ".env")
 
 import duckdb  # noqa: E402
-from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi import Depends, FastAPI, Header, HTTPException  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import FileResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
@@ -46,10 +47,13 @@ from pydantic import BaseModel, Field  # noqa: E402
 import handoff_queue  # noqa: E402
 from demo import scenarios  # noqa: E402
 from llm import SlotExtractor  # noqa: E402
-from orchestrator import GROUP_LABEL, Orchestrator, Outcome, Turn  # noqa: E402
+from orchestrator import GROUP_LABEL, T, Orchestrator, Outcome, Turn  # noqa: E402
 from policy_engine import PolicyEngine  # noqa: E402
-from session import AuthLevel, SessionError, issue_token, step_up, verify_token  # noqa: E402
-from tools import Toolbox  # noqa: E402
+from session import (  # noqa: E402
+    AgentSession, AuthLevel, SessionError, agent_login, issue_token, step_up,
+    verify_agent_token, verify_token,
+)
+from tools import Toolbox, ToolError, customer_country  # noqa: E402
 
 app = FastAPI(title="VerifiCargo", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
@@ -59,6 +63,10 @@ ENGINE = PolicyEngine()
 CON = duckdb.connect()
 _ORCH: Orchestrator | None = None
 CONVERSATIONS: dict[str, dict[str, Any]] = {}
+# Almacén de disputas compartido por todas las conversaciones y por la consola
+# del agente: una disputa aprobada por un humano la ve el cliente, y GATE-05
+# detecta duplicados entre conversaciones. En producción, el core bancario.
+DISPUTES: dict[str, dict[str, Any]] = {}
 
 
 def orchestrator() -> Orchestrator:
@@ -88,6 +96,10 @@ class Resolution(BaseModel):
     note: str = Field(default="", max_length=500)
 
 
+class AgentLogin(BaseModel):
+    access_code: str = Field(min_length=1, max_length=100)
+
+
 # --- serialización -----------------------------------------------------
 
 def session_info(token: str) -> dict[str, Any]:
@@ -101,7 +113,7 @@ def session_info(token: str) -> dict[str, Any]:
             "seconds_remaining": s.seconds_remaining}
 
 
-def turn_json(turn: Turn, handoff: dict | None) -> dict[str, Any]:
+def turn_json(turn: Turn, handoff: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "outcome": turn.outcome.value,
         "reply": turn.reply,
@@ -153,7 +165,13 @@ def new_conversation(body: NewConversation) -> dict[str, Any]:
     if sc is None:
         raise HTTPException(404, "escenario inexistente")
     cid = uuid.uuid4().hex
-    token = issue_token(sc["customer"], "MX", sc["lang"], AuthLevel.LOW)
+    # El país sale del registro del cliente (dato confiable), no de un valor
+    # fijo: los plazos y la procedencia regulatoria dependen de él.
+    try:
+        country = customer_country(sc["customer"], CON)
+    except LookupError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    token = issue_token(sc["customer"], country, sc["lang"], AuthLevel.LOW)
     CONVERSATIONS[cid] = {"token": token, "context": None, "box": None, "scenario": sc}
     return {"conversation_id": cid, "scenario": sc, "session": session_info(token)}
 
@@ -164,7 +182,7 @@ def send_message(cid: str, body: Message) -> dict[str, Any]:
 
     def factory(session):
         if conv["box"] is None:
-            conv["box"] = Toolbox(session, CON)
+            conv["box"] = Toolbox(session, CON, disputes=DISPUTES)
         conv["box"].session = session
         return conv["box"]
 
@@ -178,14 +196,32 @@ def send_message(cid: str, body: Message) -> dict[str, Any]:
                                  context=conv["context"])
     conv["context"] = turn.context_out or None
 
-    package = None
+    handoff = None
     if turn.outcome is Outcome.ESCALATED:
+        handoff = deliver_handoff(turn, conv)
+    return {"turn": turn_json(turn, handoff), "session": session_info(conv["token"])}
+
+
+def deliver_handoff(turn: Turn, conv: dict[str, Any]) -> dict[str, Any]:
+    """Todo escalamiento termina en la cola humana, verificado al releer.
+
+    Si no llega (sin ticket, cola caída, paquete inválido), al cliente no se
+    le promete un contacto: la respuesta lo dice y el caso queda en la
+    dead-letter para que operaciones lo recupere.
+    """
+    try:
+        package = handoff_queue.enqueue(turn, verify_token(conv["token"]), ENGINE,
+                                        customer_message=conv.get("last_customer_text"))
+        return {"handoff_id": package["handoff_id"], "queued": True}
+    except Exception as exc:  # noqa: BLE001
+        reason = f"{type(exc).__name__}: {exc}"[:200]
         try:
-            package = handoff_queue.enqueue(turn, verify_token(conv["token"]), ENGINE,
-                                            customer_message=conv.get("last_customer_text"))
-        except Exception as exc:  # noqa: BLE001 - la respuesta al cliente no depende de esto
-            package = {"error": f"no se pudo encolar: {exc}"}
-    return {"turn": turn_json(turn, package), "session": session_info(conv["token"])}
+            handoff_queue.dead_letter(turn, reason)
+        except OSError:
+            pass
+        turn.reply = T["escalated_no_ticket"][turn.language]
+        turn.actions_not_taken.append({"action": "enqueue_handoff", "reason": reason})
+        return {"handoff_id": None, "queued": False, "error": reason}
 
 
 @app.get("/api/conversations/{cid}/transactions")
@@ -200,7 +236,7 @@ def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
         session = verify_token(conv["token"])
     except SessionError as exc:
         raise HTTPException(401, str(exc)) from exc
-    box = conv["box"] or Toolbox(session, CON)
+    box = conv["box"] or Toolbox(session, CON, disputes=DISPUTES)
     conv["box"] = box
     rows = box.find_candidate_transactions(limit=min(limit, 20)).data["candidates"]
     return [{
@@ -225,15 +261,90 @@ def do_step_up(cid: str, body: StepUp) -> dict[str, Any]:
     return {"session": session_info(conv["token"])}
 
 
+# --- consola del agente humano ------------------------------------------
+
+def require_agent(authorization: str = Header(default="")) -> AgentSession:
+    """La cola tiene datos de clientes: solo la abre un agente autenticado."""
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(401, "se requiere un token de agente")
+    try:
+        return verify_agent_token(token)
+    except SessionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+
+
+@app.post("/api/agent/login")
+def login_agent(body: AgentLogin) -> dict[str, Any]:
+    try:
+        return {"token": agent_login(body.access_code)}
+    except SessionError as exc:
+        raise HTTPException(401, str(exc)) from exc
+
+
+def public_item(record: dict[str, Any]) -> dict[str, Any]:
+    """Lo que ve la consola: sin el bloque interno (ids crudos del cliente)."""
+    internal = record.get("internal") or {}
+    return {k: v for k, v in record.items() if k != "internal"} | {
+        "can_approve": bool(internal.get("transaction_id"))}
+
+
 @app.get("/api/handoffs")
-def list_handoffs(status: str = "pending") -> list[dict]:
-    return handoff_queue.pending() if status == "pending" else handoff_queue.resolved()
+def list_handoffs(status: str = "pending",
+                  agent: AgentSession = Depends(require_agent)) -> list[dict]:
+    source = {"pending": handoff_queue.pending,
+              "info_requested": handoff_queue.awaiting_customer,
+              "closed": handoff_queue.closed}.get(status)
+    if source is None:
+        raise HTTPException(422, "status: pending | info_requested | closed")
+    return [public_item(r) for r in source()]
 
 
 @app.post("/api/handoffs/{handoff_id}/resolve")
-def resolve_handoff(handoff_id: str, body: Resolution) -> dict[str, Any]:
-    handoff_queue.resolve(handoff_id, body.decision, body.note)
-    return {"ok": True}
+def resolve_handoff(handoff_id: str, body: Resolution,
+                    agent: AgentSession = Depends(require_agent)) -> dict[str, Any]:
+    """Registra la decisión del agente. Aprobar EJECUTA la disputa y la verifica."""
+    record = handoff_queue.get(handoff_id)
+    if record is None:
+        raise HTTPException(404, "caso inexistente")
+    if record["status"] not in handoff_queue.OPEN_STATUSES:
+        raise HTTPException(409, f"el caso ya está cerrado ({record['status']})")
+
+    result = None
+    if body.decision == "approved":
+        result = approve_dispute(record, agent)
+    try:
+        stored = handoff_queue.update(handoff_id, body.decision, agent.agent_id,
+                                      body.note, result)
+    except handoff_queue.QueueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"ok": True, "item": public_item(stored)}
+
+
+def approve_dispute(record: dict[str, Any], agent: AgentSession) -> dict[str, Any]:
+    """El agente aprueba: se abre la disputa con la misma herramienta y la
+    misma re-lectura que usa el asistente, registrando quién la ejecutó."""
+    internal = record.get("internal") or {}
+    txn_id = internal.get("transaction_id")
+    if not txn_id:
+        raise HTTPException(409, "No hay una transacción verificada para disputar: "
+                                 "pedí información al cliente o rechazá el caso.")
+    session = verify_token(issue_token(internal["customer_id"], internal["country"],
+                                       internal.get("language") or "es", AuthLevel.HIGH))
+    box = Toolbox(session, CON, disputes=DISPUTES, actor=f"agent:{agent.agent_id}")
+    try:
+        created = box.create_dispute_case(txn_id, internal.get("intent") or "unrecognized_charge",
+                                          confirmed=True)
+    except ToolError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if created.verified and created.data.get("existing_case_id"):
+        return {"action": "none", "existing_case_id": created.data["existing_case_id"],
+                "verified": True, "evidence_ids": created.evidence_ids()}
+    if not (created.ok and created.verified):
+        # El caso sigue abierto: no se marca aprobado lo que no ocurrió.
+        raise HTTPException(502, "La disputa no pudo verificarse; el caso sigue pendiente.")
+    return {"action": "create_dispute_case", "case_id": created.data["case_id"],
+            "verified": True, "evidence_ids": created.evidence_ids()}
 
 
 @app.get("/api/eval")
@@ -262,7 +373,13 @@ DIST = ROOT / "frontend" / "dist"
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
+    DIST_ROOT = DIST.resolve()
+
     @app.get("/{path:path}")
     def spa(path: str) -> FileResponse:
-        file = DIST / path
-        return FileResponse(file if path and file.is_file() else DIST / "index.html")
+        # Solo archivos DENTRO de dist. Sin esto, "/%2e%2e/%2e%2e/README.md"
+        # servía cualquier archivo del repo (revisión externa).
+        file = (DIST_ROOT / path).resolve()
+        if path and file.is_relative_to(DIST_ROOT) and file.is_file():
+            return FileResponse(file)
+        return FileResponse(DIST_ROOT / "index.html")
