@@ -29,7 +29,7 @@ export function EvalView() {
   const systems = [
     { key: "baseline", label: "Baseline: el LLM decide" },
     { key: "proposed_v1", label: "VerifiCargo v1 (α=0,10, pre-registrado)" },
-    { key: "proposed", label: "VerifiCargo v2 (α=0,20)" },
+    { key: "proposed", label: "VerifiCargo v4 (final)" },
   ].filter((s) => data[s.key])
 
   const clf = data.classifier
@@ -40,7 +40,7 @@ export function EvalView() {
           <CardTitle>Sistema completo · 159 conversaciones congeladas (tag eval-v1)</CardTitle>
           <CardDescription>
             Mismos casos, mismo modelo (qwen3:1.7b), mismo usuario simulado. Medición offline: no es una mejora medida en
-            producción. v2 se ajustó después de ver v1 y no es una estimación held-out limpia.
+            producción. v4 se ajustó mirando este set: no es una estimación held-out limpia; v1 es la versión fijada de antemano.
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">

@@ -300,16 +300,16 @@ qwen3:1.7b local para los dos sistemas · reportes en `eval/reports/system_*.jso
   informada sin verificar. Se juzga de forma determinista desde el log de
   acciones, no con un LLM.
 
-| Métrica | Baseline | v1 (α 0,10) | v2 (α 0,20) | **v3** |
-|---|---:|---:|---:|---:|
-| Resultados inseguros | 22,6% (36/159) | 0% (0/159) | 0,6% (1/159) | 0,6% (1/159) |
-| Escalamientos omitidos | 19,5% (8/41) | 0% (0/41) | 0% (0/41) | 0% (0/41) |
-| Resolución automática segura | 20,3% (15/74) | 16,2% (12/74) | 66,2% (49/74) | 55,4% (41/74) |
-| Escalamientos innecesarios | 58,0% (58/100) | 80,0% (80/100) | 30,0% (30/100) | 38% (38/100) |
-| Resultado aceptable | 79,9% (127/159) | 82,4% (131/159) | 94,3% (150/159) | 94,3% (150/159) |
-| Resolución segura es / pt | 23,1% / 13,6% | 0% / 54,5% | 61,5% / 77,3% | 48,1% / 72,7% |
-| Latencia por turno p50 / p95 | 2,6 / 8,3 s | 2,2 / 3,1 s | — / 2,3 s | 2,2 s / 2,3 s |
-| Turnos promedio | 1,03 | 2,79 | 2,60 | 2,58 |
+| Métrica | Baseline | v1 (α 0,10) | v2 (α 0,20) | v3 | **v4** |
+|---|---:|---:|---:|---:|---:|
+| Resultados inseguros | 22,6% (36/159) | 0% (0/159) | 0,6% (1/159) | 0,6% (1/159) | 0% (0/159) |
+| Escalamientos omitidos | 19,5% (8/41) | 0% (0/41) | 0% (0/41) | 0% (0/41) | 0% (0/41) |
+| Resolución automática segura | 20,3% (15/74) | 16,2% (12/74) | 66,2% (49/74) | 55,4% (41/74) | 82,4% (61/74) |
+| Escalamientos innecesarios | 58,0% (58/100) | 80,0% (80/100) | 30,0% (30/100) | 38% (38/100) | 20% (20/100) |
+| Resultado aceptable | 79,9% (127/159) | 82,4% (131/159) | 94,3% (150/159) | 94,3% (150/159) | 94,3% (150/159) |
+| Resolución segura es / pt | 23,1% / 13,6% | 0% / 54,5% | 61,5% / 77,3% | 48,1% / 72,7% | 82,7% / 81,8% |
+| Latencia por turno p50 / p95 | 2,6 / 8,3 s | 2,2 / 3,1 s | — / 2,3 s | 2,2 s / 2,3 s | 2,2 s / 2,3 s |
+| Turnos promedio | 1,03 | 2,79 | 2,60 | 2,58 | 2,59 |
 
 **v1 — pre-registrada.** Segura (0 inseguros, 41/41 escalamientos) pero inútil
 en español: 0 de 52 resoluciones. Causa: el cuantil conformal en español era
@@ -330,10 +330,35 @@ sistema preguntaba el tema dos veces y escalaba (ESC-06).
 extractor, que alucinaba monto y fecha y pisaba los datos ya dados. **v3** no
 llama al extractor ante una elección; hay un test de regresión con el caso.
 
+**v3 — el diagnóstico estaba mal.** Con la elección de botón ya sin pasar por
+el extractor, B01-0072 **siguió fallando**. Reproduciendo el caso paso a paso:
+el LLM devolvía `amount = 1121353`, que no está en el mensaje (el cliente
+escribió 524.058): era **el número de ejemplo del propio prompt** del
+extractor. Con 10% de tolerancia, la búsqueda encontró otra transacción real
+de 1.145.038 COP y el sistema la propuso; el usuario simulado, cooperativo,
+confirmó. La regex había extraído bien el monto.
+
+**v4 — anclaje de la extracción.** Toda cifra, fecha o moneda que extrae el LLM
+tiene que aparecer en el mensaje del cliente; si no, se reemplaza por lo que
+encuentra la regex. El prompt ya no contiene montos de ejemplo. Tests de
+regresión con el caso exacto. Es la misma idea que el anclaje de la respuesta
+(DATA-03), aplicada a la entrada. La misma causa explicaba 8 resoluciones que
+la v3 perdió frente a la v2: campos inventados que no coincidían con ninguna
+transacción agotaban las aclaraciones.
+
+**v4 — resultado.** 0 inseguros en 159; B01-0072 disputa ahora la transacción
+correcta (524.057,72 COP del 2026-05-31). La brecha entre idiomas se cierra
+(82,7% es / 81,8% pt). **Bloques débiles que quedan:** preguntas de política
+(3/8 aceptables) y estado de reclamos (2/6): el clasificador las manda a otro
+flujo. Es una limitación del componente aprendido, no de la política.
+
 **Lectura honesta.**
 - La comparación central es **v1 contra el baseline**, porque v1 es la única
-  versión fijada antes de ver resultados: misma tasa de resolución en el orden
-  de magnitud (16% contra 20%), con **0 inseguros contra 36**.
+  versión fijada antes de ver resultados: tasa de resolución del mismo orden
+  (16% contra 20%), con **0 inseguros contra 36**.
+- v4 muestra hasta dónde llega el sistema con los ajustes: 82% de resolución
+  segura con 0 inseguros, pero sobre el mismo eval set que se usó para
+  ajustarlo.
 - v2 y v3 muestran cuánto se recupera ajustando, pero el ajuste se hizo
   mirando este eval set. Un eval set nuevo (v2 del set) haría falta para una
   estimación limpia.

@@ -15,16 +15,16 @@ Mismo modelo (qwen3:1.7b, local) para los dos sistemas.
 
 | | Baseline: el LLM decide con la política en el prompt | **VerifiCargo** |
 |---|---:|---:|
-| **Resultados inseguros** | **22,6% (36/159)** | **0,6% (1/159)** |
+| **Resultados inseguros** | **22,6% (36/159)** | **0% (0/159)** |
 | **Escalamientos omitidos** | **19,5% (8/41)** | **0% (0/41)** |
-| Resolución automática segura | 20,3% (15/74) | **55,4% (41/74)** |
-| Escalamientos innecesarios | 58,0% (58/100) | 38% (38/100) |
+| Resolución automática segura | 20,3% (15/74) | **82,4% (61/74)** |
+| Escalamientos innecesarios | 58,0% (58/100) | 20% (20/100) |
 | Resultado aceptable | 79,9% (127/159) | 94,3% (150/159) |
 | Latencia por turno p50 / p95 | 2,6 s / 8,3 s | 2,2 s / 2,3 s |
 
 Medición offline sobre un eval set propio: **no es una mejora medida en
-producción**. La historia completa —tres versiones, un resultado inseguro real
-que la evaluación encontró y cómo se arregló— está en
+producción**. La historia completa —cuatro versiones, un resultado inseguro real
+que la evaluación encontró, un diagnóstico equivocado y el arreglo— está en
 [Evaluación](#evaluación).
 
 ---
@@ -131,25 +131,36 @@ mensajes es/pt escritos a mano, independientes del entrenamiento.
 cubre 93,8% en español donde el cuantil global sub-cubre (87,5%): la hipótesis
 que motivó D-10, confirmada.
 
-### Sistema completo: tres versiones, contadas como pasaron
+### Sistema completo: cuatro versiones, contadas como pasaron
 
-| | v1 (α = 0,10, pre-registrado) | v2 (α = 0,20 + opciones) | **v3 (bug corregido)** |
-|---|---:|---:|---:|
-| Resolución segura | 16,2% (12/74) | 66,2% (49/74) | **55,4% (41/74)** |
-| Inseguros | 0% (0/159) | 0,6% (1/159) | **0,6% (1/159)** |
-| Escalamientos omitidos | 0% (0/41) | 0% (0/41) | **0% (0/41)** |
-| Español / portugués | 0% / 54,5% | 61,5% / 77,3% | 48,1% / 72,7% |
+| | v1 (α 0,10, pre-registrada) | v2 (α 0,20 + opciones) | v3 | **v4 (anclaje)** |
+|---|---:|---:|---:|---:|
+| Resolución segura | 16,2% (12/74) | 66,2% (49/74) | 55,4% (41/74) | **82,4% (61/74)** |
+| Inseguros | 0% (0/159) | 0,6% (1/159) | 0,6% (1/159) | **0% (0/159)** |
+| Escalamientos omitidos | 0% (0/41) | 0% (0/41) | 0% (0/41) | **0% (0/41)** |
+| Español / portugués | 0% / 54,5% | 61,5% / 77,3% | 48,1% / 72,7% | 82,7% / 81,8% |
 
 - **v1** fue segura pero inútil en español: con un clasificador modesto, la
-  garantía de 90% obligaba a incluir casi todos los flujos y el sistema
+  garantía de 90% metía casi todos los flujos en el conjunto y el sistema
   escalaba tras preguntar dos veces.
-- **v2** eligió α = 0,20 a partir de la curva riesgo-cobertura, y pasó a
-  ofrecer los flujos posibles **como opciones** (lo que propone CICC). Elegido
-  **después** de ver v1: no es una estimación held-out limpia.
-- La v2 tuvo **un resultado inseguro real** (B01-0072): el texto del botón de
-  opción pasaba por el extractor, que alucinaba monto y fecha y pisaba los datos
-  del cliente; terminó disputando otra transacción. **v3** lo corrige, con un
-  test de regresión del caso exacto.
+- **v2** eligió α = 0,20 sobre la curva riesgo-cobertura y pasó a ofrecer los
+  flujos posibles **como opciones** (lo que propone CICC). Tuvo **un resultado
+  inseguro real** (B01-0072): el cliente dijo 524.058 COP y el sistema disputó
+  otra transacción de 1.145.038 COP.
+- **v3** corrigió la causa que diagnostiqué —el texto del botón pasaba por el
+  extractor— y **el caso siguió fallando**: el diagnóstico estaba mal.
+- **v4** encontró la causa real reproduciendo el caso paso a paso: **el LLM
+  devolvió como monto el número de ejemplo de su propio prompt** (1.121.353).
+  Ahora toda cifra o fecha que extrae el modelo **tiene que aparecer en el
+  mensaje del cliente**; si no, se usa la regex. El prompt ya no tiene montos
+  copiables. Tests de regresión con el caso exacto.
+
+Bloques débiles de v4: preguntas de política (3/8) y estado de reclamos (2/6),
+que el clasificador manda a otro flujo.
+
+v2 a v4 se ajustaron mirando este eval set: **no son estimaciones held-out
+limpias**. La única comparación fijada de antemano es v1 contra el baseline:
+0 inseguros contra 36.
 
 Metodología, curvas y anomalías: [docs/experiments.md](docs/experiments.md).
 Limitaciones: [docs/limitations.md](docs/limitations.md).

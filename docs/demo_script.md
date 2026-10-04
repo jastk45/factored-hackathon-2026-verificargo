@@ -18,15 +18,18 @@
 
 **0:20 – 1:00 · Camino normal** (Cliente → *Camino normal*)
 
-1. Enviar el mensaje sugerido. Si el sistema duda del tema, ofrece **opciones
-   como botones**: tocar *"un cargo que querés disputar"*.
-   > "No adivina: el clasificador da un conjunto con garantía de cobertura, y si
-   > hay más de un flujo posible, pregunta."
-2. Encuentra el cargo y **pide confirmación**. Tocar *"Sí, confirmo"*.
-3. Pide **verificar identidad**: OTP `123456` en el panel Sesión. Volver a
-   confirmar.
-4. Tarjeta verde: *"Disputa creada · verificada al releer · EV-…"*. Abrir
-   **Traza del turno**: estados, conjunto conformal, reglas `GATE-01:pass …`.
+1. Se ve el home banking del cliente con sus movimientos reales. En un
+   movimiento, tocar **"¿No lo reconocés?"**: se abre el asistente flotante con
+   el cargo ya escrito. Enviar.
+2. Si duda del tema, ofrece **opciones como botones**: tocar *"un cargo que
+   querés disputar"*.
+   > "No adivina: el clasificador da un conjunto con garantía de cobertura, y
+   > si hay más de un flujo posible, pregunta."
+3. Encuentra el cargo y **pide confirmación** (*No se ejecutó: ACT-01*). Tocar
+   *"Sí, confirmo"*.
+4. Pide **verificar identidad dentro del chat**: OTP `123456` → Verificar.
+5. Tarjeta verde: *"Disputa creada · verificada al releer · EV-…"*. Abrir
+   **Traza del turno**.
    > "Solo informa lo que pudo comprobar: después de escribir, relee."
 
 **1:00 – 1:30 · Requiere humano** (*Requiere humano: monto alto* → pestaña
@@ -50,9 +53,11 @@ Agente humano)
 > inseguros contra [N]; 8 escalamientos omitidos contra 0. El criterio del
 > clasificador lo commiteamos antes de entrenar: +13 puntos."
 
-> "Y la evaluación encontró un bug real: un botón de opción pasaba por el
-> extractor, que alucinaba el monto; terminó disputando otra transacción. Lo
-> corregimos con un test del caso exacto."
+> "Y la evaluación encontró un caso inseguro real: el modelo copió como monto
+> el número de ejemplo de su propio prompt, y el sistema disputó otra
+> transacción. Nuestro primer diagnóstico estuvo mal; reproduciendo el caso
+> encontramos la causa. Ahora toda cifra que extrae el modelo tiene que estar
+> en el mensaje del cliente."
 
 **2:35 – 3:00 · Honestidad** (slide 6)
 
