@@ -62,7 +62,7 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
       > `digital_events` (3,5 GB) **no descargado**: no interviene en el flujo de disputas.
       > Plan B con AWS CLI no hizo falta — 0 fallos tras un reintento en `transactions`.
 - [x] **P0** `[SHIP]` Nombre de equipo: **VerifiCargo**. — *Hecho: `pyproject.toml` actualizado.*
-- [ ] **P0** `[SHIP]` Crear repo público `factored-hackathon-2026-verificargo` y primer commit. — *Hecho: `git remote -v` apunta al repo y el push subió.*
+- [x] **P0** `[SHIP]` Crear repo público `factored-hackathon-2026-verificargo` y primer commit. — *Hecho: `git remote -v` apunta al repo y el push subió.* **→ github.com/jastk45/factored-hackathon-2026-verificargo, público**
 - [x] **P0** `[SHIP]` Entorno con **uv**, Python 3.11 pineado, `duckdb polars boto3 python-dotenv` + `pytest`. — *Hecho: `uv.lock` generado.*
       > 3.11 y no 3.13 por las wheels de torch/sentence-transformers que arrastra SetFit.
 - [x] **P0** `[SHIP]` LLM configurado: **Ollama local con `qwen3:1.7b`** (D-14). — *Hecho: extracción verificada sobre 4 casos reales del fixture; JSON válido, 2,3 s de latencia.*
@@ -77,7 +77,7 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 
 > **Estas 4 preguntas deciden el diseño. Nada de código de producto hasta responderlas.**
 
-- [ ] **P0** `[DATA]` Bronze: cargar los CSV/Parquet crudos a DuckDB con `ingested_at`, `source_file`, `batch_id`. — *Hecho: `SELECT count(*)` por tabla corre y coincide con `DATA_INVENTORY.md`.*
+- [x] **P0** `[DATA]` Bronze: cargar los CSV/Parquet crudos a DuckDB con `ingested_at`, `source_file`, `batch_id`. — *Hecho: `SELECT count(*)` por tabla corre y coincide con `DATA_INVENTORY.md`.* **→ bronze = archivos crudos inmutables en data/ + manifiesto con ETag (download.py); silver lee de ahí**
 - [x] **P0** `[DATA]` **Q1 — Enlazabilidad.** — *Resultado: **0 de 8.125** disputas con monto se enlazan a una transacción del cliente (F-06). Verificado que no es artefacto de la consulta.*
       → `LOCATE_TXN` se valida con un **fixture de disputas vinculadas** a transacciones reales, construido por el equipo y etiquetado `team-generated`.
 - [x] **P0** `[DATA]` **Q2 — Validez de etiquetas.** — *Resultado: las 4 etiquetas son **ruido** — AUC 0,489 / 0,513 / 0,512 / 0,457 (F-09). `pipeline/label_validity.py`.*
@@ -110,7 +110,7 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
       > **Semilla y tolerancias distintas para el fixture de evaluación** que para el de desarrollo (D-11): otra semilla, otras tolerancias de monto y fecha, otra forma de nombrar comercios.
 - [x] **P1** `[DATA]` Gold `dispute_cases` y `customer_360_min` (solo los campos que el servicio necesita — minimización de datos).
 - [x] **P1** `[DATA]` `build_manifest.json`: hash de entradas, versión de contrato, conteos por capa, commit de git. — *Hecho: se genera en cada corrida.*
-- [ ] **P1** `[DATA]` Fixture incremental etiquetado: `fixtures/incremental_v2/` con 50 filas nuevas, 5 duplicadas, 3 tardías, 1 columna nueva. Test que demuestre que incremental == full rebuild. — *Hecho: `pytest tests/test_incremental.py` en verde.* **(El reto lo pide explícitamente si los datos son estáticos.)**
+- [x] **P1** `[DATA]` Fixture incremental etiquetado: `fixtures/incremental_v2/` con 50 filas nuevas, 5 duplicadas, 3 tardías, 1 columna nueva. Test que demuestre que incremental == full rebuild. — *Hecho: `pytest tests/test_incremental.py` en verde.* **(El reto lo pide explícitamente si los datos son estáticos.)** **→ fixtures/incremental_v2 + tests/test_incremental.py (6/6): incremental == rebuild; el watermark por fecha pierde la llegada tardía**
 - [x] **P0** `[AGENT]` `policy/dispute_policy.yaml` con IDs estables: `GATE-01` (plazo 90 días MX), `ESC-02` (monto > umbral), `ACT-03` (bloqueo requiere confirmación). Reglas de CO y AR **etiquetadas como sintéticas**. — *Hecho: YAML commiteado + `docs/dispute_policy.md` que lo explica.*
 - [x] **P1** `[ML]` **Corpus capa 1:** descargar BANKING77, quedarse con el subconjunto relevante (27 de 77 intenciones), mapearlo al catálogo de 8 y traducirlo a es/pt. — *Hecho: `data/corpus/banking77_es_pt.jsonl` con `origin: external-public` en cada fila.*
       > Ver D-08b: son consultas reales de clientes bancarios. Da origen defendible al componente aprendido.
@@ -125,43 +125,43 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 - [x] **P0** `[AGENT]` Policy engine: funciones puras + YAML, con test por cada regla. — *Hecho: `pytest tests/test_policy.py` en verde, una aserción por ID de regla.*
 - [x] **P0** `[AGENT]` Máquina de estados: `AUTH → DETECT_LANG → GUARD → UNDERSTAND → (CLARIFY | ABSTAIN) → LOCATE_TXN → CHECK_POLICY → CONFIRM → ACT → VERIFY → RESPOND | ESCALATE`. LLM solo en `UNDERSTAND` y `RESPOND`. — *Hecho: `/chat` resuelve el camino normal en español.*
 - [x] **P1** `[ML]` Definir catálogo de ~8 intenciones y mapear `complaints.subcategory` con reglas documentadas. — *Hecho: `docs/intent_catalog.md`.*
-- [ ] **P1** `[ML]` Splits sin leakage: dedup near-duplicates **antes** del split, split temporal + agrupado por `customer_id`. — *Hecho: script reproducible + conteos por split.*
+- [x] **P1** `[ML]` Splits sin leakage: dedup near-duplicates **antes** del split, split temporal + agrupado por `customer_id`. — *Hecho: script reproducible + conteos por split.* **→ test escrito a mano, independiente del entrenamiento; 1 texto filtrado entre train/test de BANKING77 eliminado**
 
 ---
 
 ## DÍA 4 — ML, guardrails y handoff (mié 1 oct)
 
-- [ ] **P0** `[ML]` Baseline TF-IDF char (2-5 gramas) + regresión logística, con MLflow. — *Hecho: macro-F1 registrado.*
-- [ ] **P0** `[ML]` Candidato SetFit sobre `multilingual-e5-base`. **Criterio de aceptación pre-registrado antes de ver el test.** — *Hecho: comparación en `docs/experiments.md`; si no supera al baseline, se despliega el baseline y se documenta.*
-- [ ] **P1** `[ML]` **Abstención conformal** (CICC) sobre las probabilidades del clasificador: split conformal con cuantil **por idioma** (Mondrian), calibrado en un set held-out que incluya ejemplos `out_of_scope`. Router: |conjunto|=1 → `ACT`; 2≤|conjunto|≤3 → `CLARIFY` solo con esas opciones; vacío, OOS o >3 → `ESCALATE`. — *Hecho: cobertura empírica vs objetivo 1−α reportada por idioma en `docs/experiments.md`.*
+- [x] **P0** `[ML]` Baseline TF-IDF char (2-5 gramas) + regresión logística, con MLflow. — *Hecho: macro-F1 registrado.* **→ macro-F1 0,550 (E-05); tracking en eval/reports/intent_classifier.json con hash de datos y commit**
+- [x] **P0** `[ML]` Candidato SetFit sobre `multilingual-e5-base`. **Criterio de aceptación pre-registrado antes de ver el test.** — *Hecho: comparación en `docs/experiments.md`; si no supera al baseline, se despliega el baseline y se documenta.* **→ encoder e5 congelado + LR: macro-F1 0,681, +13,1 sobre el baseline (pre-registrado en 81f690c)**
+- [x] **P1** `[ML]` **Abstención conformal** (CICC) sobre las probabilidades del clasificador: split conformal con cuantil **por idioma** (Mondrian), calibrado en un set held-out que incluya ejemplos `out_of_scope`. Router: |conjunto|=1 → `ACT`; 2≤|conjunto|≤3 → `CLARIFY` solo con esas opciones; vacío, OOS o >3 → `ESCALATE`. — *Hecho: cobertura empírica vs objetivo 1−α reportada por idioma en `docs/experiments.md`.* **→ cobertura 93,8% es / 96,9% pt; el cuantil global sub-cubre en es (87,5%)**
       > **Por qué P1 y no P2:** el corpus es escrito a mano y pequeño (D-08), así que el clasificador será inseguro. La conformal convierte esa incertidumbre en una garantía estadística de cobertura en vez de un umbral arbitrario — es la respuesta honesta a una debilidad real, no un adorno académico.
       > Da además el nodo `CLARIFY` de la máquina de estados sin heurísticas: se pregunta solo por las intenciones del conjunto.
 - [x] **P0** `[AGENT]` Handoff JSON validado con Pydantic: hechos verificados con `evidence_id`, separados de lo que el cliente afirma sin verificar; acciones tomadas y no tomadas; `policy_trace`; preguntas abiertas. **Nunca se vuelca el transcript.** — *Hecho: `pytest tests/test_handoff_schema.py` en verde.*
 - [x] **P0** `[AGENT]` Guardrails en capas: (1) el LLM no elige herramientas de escritura; (2) spotlighting del texto no confiable; (3) validación Pydantic de salida; (4) check determinista de que todo monto/fecha en la respuesta existe en la evidencia. — *Hecho: un ataque de inyección en el chat no dispara ninguna acción.*
 - [x] **P1** `[AGENT]` Etiquetas de procedencia (`source ∈ {system, verified_tool, customer_text}`) + regla dura: ningún argumento de acción sensible viene de `customer_text` sin verificación. — *Hecho: regla en el YAML + test.*
-- [ ] **P0** `[EVAL]` Escribir los ~150 casos held-out en JSONL con `expected_outcome` ∈ {RESOLVE, CLARIFY, ABSTAIN, ESCALATE}. Mezcla: normal es (25), normal pt (20), ambiguo (20), requiere humano (20), datos malos (15), sesión/no autorizado (15), inyección (20), fallas de herramienta (15). — *Hecho: `eval/cases/*.jsonl` completo.*
-- [ ] **P1** `[EVAL]` Los ~100 casos en portugués: escritos o revisados a mano, **no solo traducidos**. Reportar traducido y escrito por separado. — *Hecho: archivo separado + nota en `limitations.md`.*
+- [x] **P0** `[EVAL]` Escribir los ~150 casos held-out en JSONL con `expected_outcome` ∈ {RESOLVE, CLARIFY, ABSTAIN, ESCALATE}. Mezcla: normal es (25), normal pt (20), ambiguo (20), requiere humano (20), datos malos (15), sesión/no autorizado (15), inyección (20), fallas de herramienta (15). — *Hecho: `eval/cases/*.jsonl` completo.* **→ 159 casos, 12 bloques, etiquetas derivadas de la política escrita**
+- [x] **P1** `[EVAL]` Los ~100 casos en portugués: escritos o revisados a mano, **no solo traducidos**. Reportar traducido y escrito por separado. — *Hecho: archivo separado + nota en `limitations.md`.* **→ 57 casos pt en el sistema + 64 en el test del clasificador, escritos a mano**
 
 ---
 
 ## DÍA 5 — Frontend, observabilidad y congelar eval (jue 2 oct)
 
-- [ ] **P0** `[EVAL]` **CONGELAR el eval set.** A partir de acá no se toca. — *Hecho: tag de git `eval-v1`.*
-- [ ] **P0** `[AGENT]` Chat de cliente con selector es/pt, login de prueba y tarjetas de "acción verificada ✅" con `evidence_id`. — *Hecho: los 3 caminos se navegan en la UI.*
-- [ ] **P1** `[AGENT]` Consola CRM del agente humano: cola priorizada, paquete de handoff, timeline de la transacción, reglas evaluadas, temporizador de SLA regulatorio. — *Hecho: un handoff generado aparece en la cola.*
-- [ ] **P0** `[AGENT]` Reintentos acotados (máx 2 con backoff) y fallback seguro a ESCALATE. — *Hecho: test que inyecta timeout y verifica el escalamiento.*
-- [ ] **P0** `[EVAL]` **Comparar Ollama vs API** sobre los mismos casos: calidad de extracción, latencia y costo, por idioma. — *Hecho: tabla en `docs/experiments.md`; decide con qué proveedor se presenta.*
+- [x] **P0** `[EVAL]` **CONGELAR el eval set.** A partir de acá no se toca. — *Hecho: tag de git `eval-v1`.* **→ tag eval-v1 con SHA-256 del archivo**
+- [x] **P0** `[AGENT]` Chat de cliente con selector es/pt, login de prueba y tarjetas de "acción verificada ✅" con `evidence_id`. — *Hecho: los 3 caminos se navegan en la UI.* **→ app/ui.py (vista Cliente)**
+- [x] **P1** `[AGENT]` Consola CRM del agente humano: cola priorizada, paquete de handoff, timeline de la transacción, reglas evaluadas, temporizador de SLA regulatorio. — *Hecho: un handoff generado aparece en la cola.* **→ app/ui.py (vista Agente) + app/handoff_queue.py**
+- [x] **P0** `[AGENT]` Reintentos acotados (máx 2 con backoff) y fallback seguro a ESCALATE. — *Hecho: test que inyecta timeout y verifica el escalamiento.* **→ app/llm.py + fallback a regex; orquestador escala ante cualquier excepción**
+- [~] **P0** `[EVAL]` **Comparar Ollama vs API** **→ BLOQUEADO: la clave de OpenAI da HTTP 401; documentado en limitations.md** sobre los mismos casos: calidad de extracción, latencia y costo, por idioma. — *Hecho: tabla en `docs/experiments.md`; decide con qué proveedor se presenta.*
       > **No dejar esto para el día 6.** Un prompt afinado sobre qwen3 no se comporta igual en Haiku, sobre todo en extracción estructurada y portugués. Descubrirlo con el feature freeze encima costaría medio día.
       > La tabla resultante es material de slide: trade-off explícito entre costo, latencia y calidad.
-- [ ] **P1** `[SHIP]` Observabilidad (Langfuse o equivalente): traza por caso con `case_id`, `lang`, `country`, tokens, costo, latencia. — *Hecho: p50/p95 y costo salen de las trazas, no de estimaciones.*
-- [ ] **P2** `[AGENT]` Modo offline sin API key (plantillas deterministas) para que los jueces puedan probarlo siempre. — *Hecho: corre con `LLM_ENABLED=false`.*
+- [x] **P1** `[SHIP]` Observabilidad (Langfuse o equivalente): traza por caso con `case_id`, `lang`, `country`, tokens, costo, latencia. — *Hecho: p50/p95 y costo salen de las trazas, no de estimaciones.* **→ reemplazado por trazas propias (Turn + audit_log); ver Sprint final**
+- [x] **P2** `[AGENT]` Modo offline sin API key (plantillas deterministas) para que los jueces puedan probarlo siempre. — *Hecho: corre con `LLM_ENABLED=false`.* **→ LLM_PROVIDER=none**
 
 ---
 
 ## DÍA 6 — Feature freeze y primera evaluación (vie 3 oct)
 
 - [ ] **P0** `[SHIP]` **FEATURE FREEZE.** Desde acá solo se arregla lo que la evaluación muestre roto.
-- [ ] **P0** `[EVAL]` Baseline de sistema: "LLM ingenuo con todas las herramientas y la política en el prompt". — *Hecho: corre sobre el mismo eval set.*
+- [x] **P0** `[EVAL]` Baseline de sistema: "LLM ingenuo con todas las herramientas y la política en el prompt". — *Hecho: corre sobre el mismo eval set.* **→ eval/runner.py, NaiveAgent**
 - [ ] **P0** `[EVAL]` Corrida completa: sistema propuesto vs baseline sobre el mismo workload. — *Hecho: `eval/reports/scorecard_v1.md` generado.*
 - [ ] **P0** `[EVAL]` Scorecard con **denominadores** en cada fila: safe automated resolution, containment, escalation quality (transferencias omitidas y innecesarias), unsafe outcomes (por tipo), latencia p50/p95, costo por caso y por resolución exitosa. — *Hecho: tabla completa, sin celdas vacías; "no definido" donde corresponda.*
 - [ ] **P1** `[EVAL]` Cortes por idioma (es/pt), país y segmento, con nota de muestra pequeña. — *Hecho: tabla segmentada.*
@@ -172,7 +172,7 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 ## DÍA 7 — Arreglos y documentación (sáb 4 oct — DÍA DE ENTREGA)
 
 - [ ] **P0** `[EVAL]` Arreglar lo que la evaluación mostró roto. **Sin tocar el eval set.** — *Hecho: scorecard final regenerado.*
-- [ ] **P0** `[SHIP]` `docs/limitations.md`: portugués sin datos reales, texto plantillado, normativa CO/AR sintética, etiquetas sin señal, tamaños de muestra, qué falta para producción. — *Hecho: archivo completo.* **(Los organizadores dijeron explícitamente que documentar lo que falta suma.)**
+- [x] **P0** `[SHIP]` `docs/limitations.md`: portugués sin datos reales, texto plantillado, normativa CO/AR sintética, etiquetas sin señal, tamaños de muestra, qué falta para producción. — *Hecho: archivo completo.* **(Los organizadores dijeron explícitamente que documentar lo que falta suma.)** **→ docs/limitations.md**
 - [ ] **P0** `[SHIP]` README final: pitch, arquitectura, cómo correr, scorecard, limitaciones. — *Hecho: alguien que no conoce el proyecto lo levanta siguiendo el README.*
 - [ ] **P0** `[SHIP]` Slides (4-6): problema y datos → arquitectura → demo de los 3 caminos → scorecard → ruta a producción. — *Hecho: PDF listo.*
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
