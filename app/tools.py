@@ -246,6 +246,41 @@ class Toolbox:
                                txn)],
         )
 
+    def list_disputes(self, limit: int = 3) -> ToolResult:
+        """Reclamos del cliente de la sesión: los históricos del dataset y los
+        abiertos en esta sesión. Solo los suyos, como toda lectura."""
+        path = GOLD / "dispute_cases.parquet"
+        rows: list[dict[str, Any]] = []
+        if path.exists():
+            found = self.con.sql(
+                f"""
+                SELECT complaint_id, CAST(created_at AS DATE), status, subcategory
+                FROM read_parquet('{path.as_posix()}')
+                WHERE customer_id = '{self.session.customer_id}'
+                ORDER BY created_at DESC
+                LIMIT {int(limit)}
+                """
+            ).fetchall()
+            rows = [{"case_id": r[0], "created_at": r[1], "status": r[2],
+                     "subcategory": r[3], "source": "gold.dispute_cases"} for r in found]
+
+        session_rows = [
+            {"case_id": d["case_id"], "created_at": d["created_at"].date(),
+             "status": d["status"], "subcategory": d["reason"], "source": "sesión"}
+            for d in self._disputes.values()
+            if d["customer_id"] == self.session.customer_id
+        ]
+        disputes = (session_rows + rows)[:limit]
+
+        evidence = [
+            Evidence(_new_id("EV"), d["source"],
+                     f"{d['case_id']} · {d['status']} · {d['created_at']}", d)
+            for d in disputes
+        ]
+        _audit("list_disputes", self.session, {"returned": len(disputes)})
+        return ToolResult(ok=True, verified=True, data={"disputes": disputes},
+                          evidence=evidence)
+
     def count_recent_unrecognized(self, days: int = 30) -> ToolResult:
         """Disputas abiertas por el cliente en los últimos N días (para ESC-04)."""
         cutoff = TODAY - timedelta(days=days)
