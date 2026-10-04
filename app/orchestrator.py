@@ -384,6 +384,12 @@ class Orchestrator:
         if awaiting == "confirmation" and AFFIRMATIVE.match(message):
             confirmed = True
             extracted = dict(context.get("fields", {}))
+        elif awaiting == "intent" and self._chosen_group(message, context) is not None:
+            # Elegir una opción no aporta datos nuevos: NO pasa por el extractor.
+            # Antes sí pasaba, y el modelo alucinaba monto y fecha sobre el texto
+            # del botón, pisando lo que el cliente ya había dicho. La evaluación
+            # lo detectó (B01-0072: disputa sobre la transacción equivocada).
+            extracted = dict(context.get("fields", {}))
         else:
             try:
                 fresh = self.extractor.extract(message)
@@ -410,8 +416,6 @@ class Orchestrator:
             # El cliente eligió una de las opciones que se le ofrecieron: la
             # elección es determinista, no se vuelve a clasificar.
             intent = context.get("group_intent", {}).get(choice) or GROUP_DEFAULT[choice]
-            extracted = {**context.get("fields", {}),
-                         **{k: v for k, v in extracted.items() if v is not None}}
         elif self.classifier is not None:
             decision = self.classifier.decide(message, turn.language)
             turn.intent_decision = decision.as_dict()

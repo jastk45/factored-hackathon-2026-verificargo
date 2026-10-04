@@ -243,3 +243,38 @@ def test_offline_mode_never_calls_a_model() -> None:
     result = SlotExtractor(provider="none").extract_with_trace("cargo de 99,90 USD")
     assert result.source == "regex" and result.attempts == 0
     assert result.fields["amount"] == 99.9
+
+
+# --- regresión: una elección de opción no pasa por el extractor -------
+
+@needs_gold
+def test_choosing_an_option_does_not_overwrite_the_customers_details(con, txn) -> None:
+    """B01-0072 (eval v2): el extractor recibía el texto del botón, alucinaba
+    monto y fecha, y pisaba los datos reales. Terminó en una disputa sobre
+    otra transacción. Ahora la elección no llama al extractor."""
+    calls = []
+
+    class Hallucinating:
+        def extract(self, message):
+            calls.append(message)
+            if message.startswith("choice:"):
+                return {"amount": 999999.0, "currency": "COP", "date": "2020-01-01"}
+            return {"amount": float(txn["amount"]), "currency": txn["currency"],
+                    "merchant": None, "date": str(txn["transaction_date"])}
+
+    class Ambiguous:
+        """Clasificador que siempre duda entre disputa y otro tema."""
+        def decide(self, text, language):
+            from intent import IntentDecision
+            return IntentDecision("unrecognized_charge", 0.5,
+                                  ("unrecognized_charge", "out_of_scope"),
+                                  ("dispute", "out_of_scope"), "CLARIFY", "duda")
+
+    orch = Orchestrator(Hallucinating(), classifier=Ambiguous())
+    t1 = run(orch, con, txn["customer_id"], "no reconozco un cargo")
+    assert t1.context_out["awaiting"] == "intent"
+
+    t2 = run(orch, con, txn["customer_id"], "choice:dispute", context=t1.context_out)
+    assert "choice:dispute" not in calls, "el texto del botón no debe llegar al modelo"
+    assert t2.extracted["amount"] == float(txn["amount"])
+    assert t2.extracted["date"] == str(txn["transaction_date"])

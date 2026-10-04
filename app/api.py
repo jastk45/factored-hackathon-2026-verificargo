@@ -207,7 +207,7 @@ def eval_reports() -> dict[str, Any]:
     reports = ROOT / "eval" / "reports"
     out: dict[str, Any] = {}
     for key, name in [("baseline", "system_baseline.json"),
-                      ("proposed", "system_proposed_v2.json"),
+                      ("proposed", "system_proposed_v3.json" if (ROOT / "eval" / "reports" / "system_proposed_v3.json").exists() else "system_proposed_v2.json"),
                       ("proposed_v1", "system_proposed_v1_alpha010.json"),
                       ("classifier", "intent_classifier.json")]:
         path = reports / name
