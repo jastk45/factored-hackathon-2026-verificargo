@@ -349,21 +349,22 @@ def approve_dispute(record: dict[str, Any], agent: AgentSession) -> dict[str, An
 
 @app.get("/api/eval")
 def eval_reports() -> dict[str, Any]:
+    """Scorecards del evaluador v2: eval-v2 (casos nuevos, congelados antes de
+    correr) y eval-v1 (el set usado durante el desarrollo)."""
     reports = ROOT / "eval" / "reports"
     out: dict[str, Any] = {}
-    for key, name in [("baseline", "system_baseline.json"),
-                      ("proposed", next((f for f in ("system_proposed_v4.json", "system_proposed_v3.json",
-                                      "system_proposed_v2.json")
-                                     if (ROOT / "eval" / "reports" / f).exists()),
-                                    "system_proposed_v2.json")),
-                      ("proposed_v1", "system_proposed_v1_alpha010.json"),
-                      ("classifier", "intent_classifier.json")]:
-        path = reports / name
-        if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            out[key] = data.get("scorecard", data) if key != "classifier" else {
-                "arms": data["arms"], "acceptance": data["acceptance"],
-                "alpha_sweep": data.get("alpha_sweep"), "conformal": data["conformal"]}
+    for cases in ("v2", "v1"):
+        for system in ("baseline", "proposed"):
+            path = reports / f"system_{system}_{cases}_v5.json"
+            if path.exists():
+                data = json.loads(path.read_text(encoding="utf-8"))
+                out.setdefault(cases, {})[system] = data["scorecard"]
+    path = reports / "intent_classifier.json"
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        out["classifier"] = {"arms": data["arms"], "acceptance": data["acceptance"],
+                             "alpha_sweep": data.get("alpha_sweep"),
+                             "conformal": data["conformal"]}
     return out
 
 

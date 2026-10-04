@@ -4,6 +4,7 @@
 
 1. Ollama corriendo (`ollama serve`) — o `LLM_PROVIDER=none` si no.
 2. Borrar `warehouse/handoff_queue.jsonl` para que la consola arranque vacía.
+   Código de acceso de la consola del agente: `agente-demo-2026`.
 3. `make serve` y abrir `http://localhost:8000`. Navegador al 110%, 1080p.
 4. Hacer una pasada completa de prueba: la primera respuesta tarda ~20 s
    porque carga el encoder; las siguientes, 2-5 s.
@@ -25,8 +26,9 @@
    querés disputar"*.
    > "No adivina: el clasificador da un conjunto con garantía de cobertura, y
    > si hay más de un flujo posible, pregunta."
-3. Encuentra el cargo y **pide confirmación** (*No se ejecutó: ACT-01*). Tocar
-   *"Sí, confirmo"*.
+3. Encuentra el cargo y **pide confirmación** (*No se ejecutó: ACT-01*). Hay dos
+   botones: *"Sí, confirmo"* y *"No, cancelar"*. Tocar *"Sí, confirmo"*.
+   > "Un 'sí, pero todavía no' no autoriza nada: cancela."
 4. Pide **verificar identidad dentro del chat**: OTP `123456` → Verificar.
 5. Tarjeta verde: *"Disputa creada · verificada al releer · EV-…"*. Abrir
    **Traza del turno**.
@@ -36,9 +38,13 @@
 Agente humano)
 
 1. Escala con `ESC-01: monto supera el umbral de 400 USD`.
-2. En **Agente humano**: prioridad, plazo regulatorio (real para México),
+2. En **Agente humano**: entrar con el código de acceso (la cola no se abre
+   sin rol de agente). Prioridad, plazo regulatorio con su procedencia,
    **hechos verificados separados de lo que dice el cliente**, preguntas
    abiertas. Sin la conversación cruda.
+3. Tocar **"Aprobar y abrir disputa"**: ejecuta la disputa con la misma
+   herramienta y la misma re-lectura, y el caso pasa a *Cerrados* con el número
+   verificado.
 
 **1:30 – 1:55 · Ataque en portugués** (*Inyección de prompt (pt)*)
 
@@ -48,16 +54,16 @@ Agente humano)
 
 **1:55 – 2:35 · La evidencia** (pestaña Evaluación)
 
-> "159 conversaciones congeladas en git antes de evaluar. Contra un baseline
-> donde el mismo LLM decide con la política en el prompt: 36 resultados
-> inseguros contra [N]; 8 escalamientos omitidos contra 0. El criterio del
-> clasificador lo commiteamos antes de entrenar: +13 puntos."
+> "Una auditoría externa nos mostró que nuestro evaluador aprobaba cosas que
+> no comprobaba. Lo corregimos, congelamos el sistema y escribimos 152 casos
+> nuevos, commiteados antes de correr. Contra un baseline donde el mismo LLM
+> decide con la política completa en el prompt: 41 resultados
+> inseguros contra 0; 20 escalamientos omitidos
+> contra 0. Y cada escalamiento llega a la cola con un ticket
+> verificado."
 
-> "Y la evaluación encontró un caso inseguro real: el modelo copió como monto
-> el número de ejemplo de su propio prompt, y el sistema disputó otra
-> transacción. Nuestro primer diagnóstico estuvo mal; reproduciendo el caso
-> encontramos la causa. Ahora toda cifra que extrae el modelo tiene que estar
-> en el mensaje del cliente."
+> "Lo débil también está medido: las preguntas de plazos y de estado, el
+> clasificador las escala en vez de responderlas."
 
 **2:35 – 3:00 · Honestidad** (slide 6)
 

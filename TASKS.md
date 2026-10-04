@@ -175,6 +175,19 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 - [x] **P0** `[SHIP]` `docs/limitations.md`: portugués sin datos reales, texto plantillado, normativa CO/AR sintética, etiquetas sin señal, tamaños de muestra, qué falta para producción. — *Hecho: archivo completo.* **(Los organizadores dijeron explícitamente que documentar lo que falta suma.)** **→ docs/limitations.md**
 - [x] **P0** `[SHIP]` README final: pitch, arquitectura, cómo correr, scorecard, limitaciones. — *Hecho: alguien que no conoce el proyecto lo levanta siguiendo el README.* **→ README.md**
 - [x] **P0** `[SHIP]` Slides (4-6): problema y datos → arquitectura → demo de los 3 caminos → scorecard → ruta a producción. — *Hecho: PDF listo.* **→ docs/VerifiCargo.pptx (6 slides, números leídos de los reportes)**
+
+### Revisión externa (4 oct): seguridad, flujo humano y evaluador
+
+- [x] **P0** `[AGENT]` Path traversal en la ruta del frontend. — *Hecho: `/%2e%2e/%2e%2e/README.md` ya no sirve el archivo; test.* **→ D-15..D-17, tests/test_review_fixes.py**
+- [x] **P0** `[AGENT]` Confirmación inequívoca, con cancelar y corregir. — *Hecho: "Sí, pero no abras la disputa todavía" cancela.* **→ D-15**
+- [x] **P0** `[AGENT]` Todo escalamiento crea y verifica un ticket; la API relee la cola; dead-letter si falla. **→ D-16**
+- [x] **P0** `[AGENT]` Consola humana con token de agente; aprobar ejecuta y verifica; pedir información queda abierto. **→ D-16, D-17**
+- [x] **P0** `[AGENT]` País de la sesión desde el registro del cliente; GATE-05 conectado (disputa repetida).
+- [x] **P0** `[EVAL]` Evaluador v2: fallas activadas, ticket verificado, respuestas verificadas, aceptable ≠ inseguro, dos denominadores, baseline con la política completa. — *Hecho: tests del evaluador.* **→ D-18, tests/test_evaluator.py**
+- [x] **P0** `[EVAL]` eval-v2: 152 casos nuevos, congelados (tag `eval-v2`) antes de correr. **→ eval/cases/build_system_eval_v2.py**
+- [x] **P0** `[EVAL]` Correr los dos sistemas sobre eval-v2 y eval-v1 con el evaluador v2; actualizar README, E-07, deck y vista de Evaluación. — *Hecho: eval-v2 0/152 inseguros contra 41/152 del baseline.* **→ E-07**
+- [x] **P1** `[SHIP]` ESLint sin errores; se quita la UI de Streamlit (salteaba el flujo de aprobación).
+
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
 - [ ] **P0** `[SHIP]` **ENVIAR a hackathon.admin@factored.ai**: link del repo, link del deploy, slides, video. — *Hecho: email enviado con acuse.*
 

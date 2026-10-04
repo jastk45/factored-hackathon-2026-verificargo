@@ -16,6 +16,7 @@ services:
       LLM_BASE_URL: http://ollama:11434
       LLM_MODEL: qwen3:1.7b
       SESSION_SECRET: ${SESSION_SECRET:-cambiar-en-cada-despliegue}
+      AGENT_ACCESS_CODE: ${AGENT_ACCESS_CODE:-agente-demo-2026}
 
   ollama:
     image: ollama/ollama:latest

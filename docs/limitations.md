@@ -82,7 +82,9 @@ procedimiento, no una explicación de la transacción concreta.
 
 **La identidad es un mock.** Token HMAC de vida corta y un OTP fijo de prueba
 (`123456`). Demuestra el contrato (sesión firmada, niveles, expiración), no
-autentica a nadie.
+autentica a nadie. Lo mismo vale para la consola humana: el token de agente se
+obtiene con un código de acceso de prueba documentado (D-17); en producción
+saldría del SSO del banco.
 
 **El detector de inyección es evadible** (`test_detection_can_be_evaded` lo
 demuestra). La garantía viene de la arquitectura: el modelo no decide acciones
@@ -92,17 +94,45 @@ y ningún argumento sensible puede venir del texto del cliente (DATA-01).
 ejemplo, un nombre de comercio malicioso en la base). La defensa de
 procedencia la cubriría, pero no hay un caso de evaluación que lo ejercite.
 
-**Concurrencia**: las acciones de escritura viven en memoria por sesión
-(`Toolbox`). No hay control de concurrencia entre sesiones simultáneas.
+**Concurrencia**: las disputas viven en un almacén en memoria compartido por
+el proceso. GATE-05 detecta duplicados entre conversaciones, y el caso de
+carrera (dos conversaciones abren la misma disputa) se maneja y se prueba, pero
+no hay transacciones ni bloqueos reales: con varios procesos haría falta el
+core bancario con idempotencia.
+
+**Lo que encontró una revisión externa (4 de octubre).** Path traversal en la
+ruta del frontend, una confirmación que aceptaba "Sí, pero no abras la disputa
+todavía", escalamientos sin ticket, la cola humana sin control de acceso,
+aprobar sin ejecutar, el país fijo en "MX" y un KeyError con disputas repetidas.
+Los siete se reprodujeron, se corrigieron y tienen un test de regresión
+(`tests/test_review_fixes.py`). Que una revisión los encontrara indica que
+puede haber otros del mismo tipo.
 
 ## 6. Evaluación
 
-**Muestras pequeñas.** 159 casos de sistema (102 es / 57 pt) y 128 del
-clasificador. Cero fallas observadas en un bloque de 6-12 casos **no** prueba
-riesgo cero.
+**El evaluador v1 tenía defectos** (D-18): no comprobaba que las fallas
+inyectadas se activaran, ni que un escalamiento tuviera ticket, ni que una
+respuesta de política o estado fuera correcta. Las cifras v1-v4 que se
+publicaron antes del 4 de octubre (incluido el 82,4% de resolución segura) no
+se presentan como validadas.
 
-**El usuario simulado es cooperativo**: responde siempre con los datos exactos.
-Un cliente real se equivoca, cambia de idea o abandona.
+**eval-v1 no es held-out**: el sistema se ajustó mirándolo. El resultado
+principal es **eval-v2** (152 casos), construido y congelado (tag `eval-v2`)
+con el sistema ya cerrado. Pero lo escribió el mismo equipo que construyó el
+sistema: es independiente de los ajustes, no de quien lo diseñó.
+
+**Muestras pequeñas.** 152 + 159 casos de sistema y 128 del clasificador. Cero
+fallas observadas en un bloque de 6-12 casos **no** prueba riesgo cero.
+
+**El usuario simulado sigue un guion.** En eval-v2 dice que no, confirma con
+reservas o cambia a una tarjeta robada en plena confirmación, pero lo hace con
+frases fijas. Un cliente real se equivoca de cifra, abandona o mezcla temas de
+formas que el guion no cubre.
+
+**La corrección de una respuesta se juzga con reglas**, no con un juez humano:
+los plazos del país, los reclamos reales del cliente y ninguna afirmación de
+reembolso. Detecta respuestas inventadas de ese tipo, no una respuesta
+confusa o en mal tono.
 
 **Una sola corrida por sistema**, sin intervalos de confianza ni pass^k. La
 variabilidad entre corridas del LLM (temperatura 0, pero no determinista entre
@@ -110,7 +140,11 @@ versiones) no está medida.
 
 **El baseline usa el mismo modelo pequeño.** Un "LLM que decide" con un modelo
 grande probablemente rendiría mejor; la comparación mide la arquitectura con el
-modelo disponible, no el techo de cada enfoque.
+modelo disponible, no el techo de cada enfoque. Desde el evaluador v2 recibe la
+política completa del YAML, la fecha de referencia, los reclamos del cliente y
+decide él mismo si el cliente confirmó. Siguen diferencias que no son de
+arquitectura: redacta la respuesta en texto libre (VerifiCargo usa plantillas)
+y hace una sola llamada por turno, sin un ciclo de herramientas.
 
 **Costos**: el sistema corre en local, sin costo por token. Los costos por caso
 del scorecard son **proyecciones** con el precio de lista de gpt-4o-mini y
@@ -121,8 +155,9 @@ tokens estimados, no gasto medido.
 | Área | Prototipo | Producción |
 |---|---|---|
 | Identidad | Token HMAC + OTP fijo | IdP del banco (OIDC), MFA real, secreto en gestor y rotación |
-| Acciones | Almacén en memoria | Core bancario detrás de un adaptador con idempotencia y reintentos |
-| Cola humana | JSONL local | CRM (Salesforce/Zendesk) detrás de la interfaz `enqueue/pending/resolve` |
+| Acciones | Almacén en memoria compartido por el proceso | Core bancario detrás de un adaptador con idempotencia y reintentos |
+| Cola humana | JSONL local con re-lectura y dead-letter | CRM (Salesforce/Zendesk) detrás de la interfaz `enqueue/get/update` |
+| Agentes | Token de agente con código de prueba | SSO del banco con roles, y auditoría por agente |
 | Política | YAML + funciones puras | Mismo modelo, con OPA o Cerbos y revisión de Compliance por versión |
 | Datos | DuckDB sobre Parquet local | Mismo pipeline en un lakehouse con orquestador (Airflow/Dagster) |
 | Observabilidad | Traza por turno + log de auditoría JSONL | OpenTelemetry → Langfuse/Datadog, alertas sobre tasa de escalamiento y unsafe |

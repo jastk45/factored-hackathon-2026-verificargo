@@ -23,10 +23,8 @@ train:            ## clasificador de intención (E-05)
 	uv run python pipeline/build_corpus.py
 	uv run python ml/train_intent.py
 
-eval:             ## sistema vs baseline sobre el eval set congelado (requiere Ollama)
-	uv run python eval/runner.py --system proposed
-	uv run python eval/runner.py --system baseline
-	uv run python eval/runner.py --report
+eval:             ## sistema vs baseline sobre eval-v2 y eval-v1 (requiere Ollama)
+	for cases in v2 v1; do for system in proposed baseline; do 	  uv run python eval/runner.py --system $$system --cases $$cases --tag v5; done; done
 
 test:             ## toda la suite
 	uv run pytest -q

@@ -103,6 +103,18 @@ export interface QueueItem {
   package: HandoffPackage
 }
 
+export type Scorecard = Record<string, unknown>
+
+export interface EvalData {
+  v1?: { baseline?: Scorecard; proposed?: Scorecard }
+  v2?: { baseline?: Scorecard; proposed?: Scorecard }
+  classifier?: {
+    arms: Record<string, { macro_f1: number; macro_f1_es: number; macro_f1_pt: number }>
+    acceptance: { deployed: string; gain_macro_f1: number; accepted: boolean }
+    alpha_sweep?: { alpha: number; coverage: number; decides: number; clarifies: number; routing_errors: number }[]
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -147,5 +159,5 @@ export const api = {
       { method: "POST", body: JSON.stringify({ decision, note }) },
       token,
     ),
-  evaluation: () => call<Record<string, unknown>>("/api/eval"),
+  evaluation: () => call<EvalData>("/api/eval"),
 }

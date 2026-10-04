@@ -444,3 +444,109 @@ bucket, antes del EDA. Se verifican el día 1.
 - **Los organizadores no resuelven ambigüedades del dataset a propósito.** Su
   respuesta recurrente en Slack es "nice finding, how would you justify it?".
   Encontrar las anomalías y documentarlas es parte de la evaluación.
+
+---
+
+## D-15 · Una confirmación vale solo si es inequívoca
+
+**Fecha:** 4 oct 2026 · **Estado:** activa
+
+ACT-01 exigía "confirmación explícita", pero el código miraba solo el comienzo
+del mensaje: **"Sí, pero no abras la disputa todavía" abría la disputa**. Lo
+encontró una revisión externa y se reprodujo antes de arreglarlo.
+
+Ahora `read_confirmation` devuelve sí, no o nada:
+
+- **sí**: el botón (`choice:confirm`) o un afirmativo corto, sin negación ni
+  "pero".
+- **no**: el botón de cancelar o cualquier negación ("no", "todavía", "esperá",
+  "ainda", "depois"…). Si no trae datos nuevos, el turno termina en
+  `CANCELLED` y no se ejecuta nada.
+- **nada**: cualquier otra cosa se lee como corrección; se vuelve a buscar y se
+  vuelve a pedir el sí.
+
+**Por qué así.** El error caro es actuar sin permiso; el barato, preguntar de
+nuevo. Un "no" mal leído deja al cliente sin disputa por un turno; un "sí" mal
+leído abre un caso formal que no pidió. Las tres salidas se prueban en
+`tests/test_review_fixes.py`.
+
+---
+
+## D-16 · Escalar es un ticket verificado en la cola, no un estado
+
+**Fecha:** 4 oct 2026 · **Estado:** activa
+
+La misma revisión encontró tres caminos que terminaban en `ESCALATED` sin que
+el caso llegara a un humano: el fallback por excepción, el chequeo de anclaje
+(DATA-03) y la API, que encolaba "si podía". Además el cliente leía "Te vamos a
+contactar" aunque no existiera el ticket.
+
+Ahora:
+
+1. Todo camino que escala llama a `create_handoff_ticket` y verifica el ticket
+   al releerlo, también el fallback por excepción.
+2. La API encola el paquete y **relee la cola**. Si no está, la respuesta al
+   cliente cambia a una que no promete contacto ("comunicate con la línea del
+   banco") y el caso queda en una dead-letter para operaciones.
+3. El evaluador cuenta un escalamiento solo si hay un ticket verificado en el
+   mock (D-18).
+
+**Pedir información no cierra el caso.** El estado `info_requested` queda
+abierto, en su propia sección de la consola. **Aprobar ejecuta**: abre la
+disputa con la misma herramienta y la misma re-lectura que el asistente, y
+registra al agente como autor en el log de auditoría.
+
+---
+
+## D-17 · La consola humana exige un token de agente
+
+**Fecha:** 4 oct 2026 · **Estado:** activa
+
+La cola tiene datos de clientes y respondía sin credenciales. Ahora hay un
+token de agente firmado (`typ=agent`, rol `dispute_agent`, 8 horas) que se
+obtiene con un código de acceso. Un token de cliente no abre la cola y uno de
+agente no sirve como sesión de cliente.
+
+**Qué no es.** No es un sistema de identidad de empleados: el código de acceso
+de la demo está documentado como el OTP de prueba. En producción el rol vendría
+del SSO del banco. Lo que se demuestra es la separación de roles en la API.
+
+---
+
+## D-18 · Evaluador v2 y un eval set nuevo, congelado antes de correr
+
+**Fecha:** 4 oct 2026 · **Estado:** activa · **Revierte:** la lectura de los
+resultados v1-v4
+
+Una auditoría externa del evaluador encontró que contaba como logros cosas que
+no había comprobado:
+
+| Defecto | Efecto |
+|---|---|
+| La caída del modelo cambiaba una variable de entorno que el extractor ya había leído | 3 de las 61 resoluciones "con el modelo caído" se hicieron con el modelo andando |
+| Una respuesta de política o estado era correcta con solo terminar en RESOLVED | "Invento que ya devolvimos el dinero" contaba como resolución segura |
+| Escalar era terminar en ESCALATED, sin mirar el ticket | Dos casos escalaron por excepción sin ticket y contaron como correctos |
+| Terminar en aclaraciones un caso que requería humano no contaba como omitido | El 0% de escalamientos omitidos no medía eso |
+| "Aceptable" no excluía "inseguro" | 11 casos del baseline eran las dos cosas |
+| El 82,4% era sobre 74 casos resolubles | Las bases piden también el denominador de todos los casos en alcance |
+| El baseline recibía una política resumida, sin fecha de referencia, con USD desconocido como 0 y `confirmed=True` fijo | Parte de la diferencia no era arquitectura |
+
+**Decisión.** Se corrige el evaluador (`eval/runner.py`, con tests propios en
+`tests/test_evaluator.py`), se corrigen las condiciones del baseline, se
+congela el sistema y se construye **eval-v2**: 152 casos nuevos, commiteados
+con su hash y el tag `eval-v2` **antes** de correr cualquiera de los dos
+sistemas sobre ellos. Las cifras v1-v4 publicadas antes (incluido el 82,4%)
+**no se presentan como validadas**: salían del evaluador defectuoso.
+
+**Por qué no basta con re-evaluar sobre eval-v1.** El sistema se ajustó
+mirando esos casos. Se re-evalúa también sobre eval-v1 para comparar, pero el
+resultado principal es eval-v2.
+
+**Una corrida del baseline se descartó.** La primera sobre eval-v2 dio 2/60
+resoluciones: el ejemplo de JSON del prompt decía `customer_confirmed: false`
+y el modelo lo copiaba, y las reglas iban sin su condición. Se corrigió el
+harness a favor del baseline y se volvió a correr; la corrida descartada se
+conserva (E-07). Después se vio que el baseline creaba disputas en el primer
+turno declarando que el cliente había confirmado sin preguntarle; el evaluador
+pasó a verificar ACT-01 desde la conversación y se repitieron las cuatro
+corridas. El sistema propuesto no se tocó.
