@@ -29,7 +29,7 @@ BACKOFF_SECONDS = 0.5     # se duplica en cada reintento
 
 SLOT_PROMPT = """Extrae datos del mensaje de un cliente bancario.
 Responde SOLO un JSON con estas claves:
-  amount    número; la coma es DECIMAL y el punto separa MILES ("150,00" es 150, "1.121.353" es 1121353); null si no hay
+  amount    número, tal como aparece en el mensaje; la coma es DECIMAL y el punto separa MILES; null si no hay
   currency  MXN, COP, ARS, USD o null
   merchant  SOLO el nombre del comercio, sin frases; null si no hay
   date      YYYY-MM-DD solo si hay fecha exacta; null si es vaga
@@ -100,6 +100,45 @@ def regex_extract(message: str) -> dict[str, Any]:
     return out
 
 
+def amounts_in(message: str) -> list[float]:
+    """Todos los montos que aparecen escritos en el mensaje."""
+    without_dates = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", message)
+    tokens = re.findall(r"\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?", without_dates)
+    return [v for v in (parse_amount(tok) for tok in tokens) if v is not None]
+
+
+def ground(fields: dict[str, Any], message: str) -> tuple[dict[str, Any], list[str]]:
+    """Toda cifra y fecha extraída por el LLM tiene que estar en el mensaje.
+
+    Lo que no aparece se descarta y se reemplaza por lo que encuentre la regex.
+    Motivo medido (eval v3, B01-0072): el modelo devolvió como monto el número
+    de ejemplo de su propio prompt (1.121.353); la búsqueda encontró otra
+    transacción real de ese orden y el sistema la disputó.
+    """
+    fixed = dict(fields)
+    notes: list[str] = []
+    fallback = regex_extract(message)
+
+    amount = fixed.get("amount")
+    if amount is not None:
+        stated = amounts_in(message)
+        if not any(abs(amount - s) <= max(0.01, abs(s) * 0.001) for s in stated):
+            notes.append(f"monto {amount} no está en el mensaje: se usa {fallback['amount']}")
+            fixed["amount"] = fallback["amount"]
+
+    date = fixed.get("date")
+    if date is not None and date not in message:
+        notes.append(f"fecha {date} no está en el mensaje: se descarta")
+        fixed["date"] = fallback["date"]
+
+    currency = fixed.get("currency")
+    if currency is not None and fallback["currency"] is None and currency.lower() not in message.lower():
+        notes.append(f"moneda {currency} no está en el mensaje: se descarta")
+        fixed["currency"] = None
+
+    return fixed, notes
+
+
 @dataclass
 class ExtractionResult:
     fields: dict[str, Any]
@@ -147,8 +186,11 @@ class SlotExtractor:
                         fields["currency"] = None
                     if fields["date"] and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", fields["date"]):
                         fields["date"] = None
-                    return ExtractionResult(fields, "llm", attempts,
-                                            int((time.perf_counter() - started) * 1000), errors)
+                    fields, notes = ground(fields, message)
+                    source = "llm" if not notes else "llm+anclaje"
+                    return ExtractionResult(fields, source, attempts,
+                                            int((time.perf_counter() - started) * 1000),
+                                            errors + notes)
                 except Exception as exc:  # noqa: BLE001 - se reintenta y luego se cae a regex
                     errors.append(f"intento {attempt}: {type(exc).__name__}: {exc}"[:160])
                     if attempt < MAX_ATTEMPTS:

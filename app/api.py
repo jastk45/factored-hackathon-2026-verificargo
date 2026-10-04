@@ -168,6 +168,12 @@ def send_message(cid: str, body: Message) -> dict[str, Any]:
         conv["box"].session = session
         return conv["box"]
 
+    # Lo último que el cliente escribió (no los botones ni las confirmaciones),
+    # para el resumen del handoff.
+    text = body.message.strip()
+    if not text.startswith("choice:") and len(text) > 15:
+        conv["last_customer_text"] = text
+
     turn = orchestrator().handle(conv["token"], body.message, factory,
                                  context=conv["context"])
     conv["context"] = turn.context_out or None
@@ -175,10 +181,38 @@ def send_message(cid: str, body: Message) -> dict[str, Any]:
     package = None
     if turn.outcome is Outcome.ESCALATED:
         try:
-            package = handoff_queue.enqueue(turn, verify_token(conv["token"]), ENGINE)
+            package = handoff_queue.enqueue(turn, verify_token(conv["token"]), ENGINE,
+                                            customer_message=conv.get("last_customer_text"))
         except Exception as exc:  # noqa: BLE001 - la respuesta al cliente no depende de esto
             package = {"error": f"no se pudo encolar: {exc}"}
     return {"turn": turn_json(turn, package), "session": session_info(conv["token"])}
+
+
+@app.get("/api/conversations/{cid}/transactions")
+def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Movimientos del cliente de la sesión, para la página del home banking.
+
+    Usa la misma herramienta que el asistente: el filtro por cliente sale de
+    la sesión firmada, así que no hay forma de pedir los de otro.
+    """
+    conv = conversation(cid)
+    try:
+        session = verify_token(conv["token"])
+    except SessionError as exc:
+        raise HTTPException(401, str(exc)) from exc
+    box = conv["box"] or Toolbox(session, CON)
+    conv["box"] = box
+    rows = box.find_candidate_transactions(limit=min(limit, 20)).data["candidates"]
+    return [{
+        "transaction_id": r["transaction_id"],
+        "date": str(r["transaction_date"]),
+        "merchant": r["merchant_name"] or "—",
+        "category": r["merchant_category"],
+        "amount": float(r["amount"]),
+        "currency": r["currency"],
+        "status": r["transaction_status"],
+        "channel": r["channel"],
+    } for r in rows]
 
 
 @app.post("/api/conversations/{cid}/step-up")
@@ -207,7 +241,10 @@ def eval_reports() -> dict[str, Any]:
     reports = ROOT / "eval" / "reports"
     out: dict[str, Any] = {}
     for key, name in [("baseline", "system_baseline.json"),
-                      ("proposed", "system_proposed_v3.json" if (ROOT / "eval" / "reports" / "system_proposed_v3.json").exists() else "system_proposed_v2.json"),
+                      ("proposed", next((f for f in ("system_proposed_v4.json", "system_proposed_v3.json",
+                                      "system_proposed_v2.json")
+                                     if (ROOT / "eval" / "reports" / f).exists()),
+                                    "system_proposed_v2.json")),
                       ("proposed_v1", "system_proposed_v1_alpha010.json"),
                       ("classifier", "intent_classifier.json")]:
         path = reports / name

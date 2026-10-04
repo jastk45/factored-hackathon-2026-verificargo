@@ -278,3 +278,40 @@ def test_choosing_an_option_does_not_overwrite_the_customers_details(con, txn) -
     assert "choice:dispute" not in calls, "el texto del botón no debe llegar al modelo"
     assert t2.extracted["amount"] == float(txn["amount"])
     assert t2.extracted["date"] == str(txn["transaction_date"])
+
+
+# --- regresión: lo que extrae el LLM tiene que estar en el mensaje ----
+
+def test_amount_copied_from_the_prompt_is_rejected() -> None:
+    """Eval v3, B01-0072: el modelo devolvió 1.121.353, el número de ejemplo de
+    su propio prompt. La búsqueda encontró otra transacción real de ese orden
+    y el sistema la disputó. El anclaje lo reemplaza por el monto escrito."""
+    from llm import ground
+    msg = ("Hola, tengo un cargo de 524.058 COP en no recuerdo cuál que no "
+           "reconozco. Fue 2026-06-02.")
+    fixed, notes = ground({"amount": 1121353.0, "currency": "COP",
+                           "merchant": None, "date": "2026-06-02"}, msg)
+    assert fixed["amount"] == 524058.0
+    assert notes and "no está en el mensaje" in notes[0]
+
+
+def test_invented_date_is_dropped() -> None:
+    from llm import ground
+    fixed, _ = ground({"amount": None, "currency": None, "merchant": None,
+                       "date": "2026-01-01"}, "no reconozco un cargo de ayer")
+    assert fixed["date"] is None
+
+
+def test_correct_extraction_passes_untouched() -> None:
+    from llm import ground
+    fields = {"amount": 1500.5, "currency": "MXN", "merchant": "Uber",
+              "date": "2026-05-04"}
+    fixed, notes = ground(fields, "cargo de 1.500,50 MXN en Uber el 2026-05-04")
+    assert fixed == fields and notes == []
+
+
+def test_the_prompt_has_no_copyable_example_amounts() -> None:
+    from llm import SLOT_PROMPT
+    import re as _re
+    assert not _re.search(r"\d{3}[.,]\d{3}", SLOT_PROMPT), (
+        "un monto de ejemplo en el prompt puede terminar copiado como extracción")

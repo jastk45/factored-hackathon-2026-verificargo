@@ -69,8 +69,12 @@ def open_questions(turn) -> list[str]:
     return questions
 
 
-def enqueue(turn, session, engine) -> dict[str, Any] | None:
-    """Arma el paquete del turno escalado y lo encola. Devuelve el paquete."""
+def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[str, Any] | None:
+    """Arma el paquete del turno escalado y lo encola. Devuelve el paquete.
+
+    `customer_message` es lo último que el cliente ESCRIBIÓ: si el turno que
+    escaló fue la elección de un botón, el texto del turno no dice nada útil.
+    """
     ticket = next((a.get("ticket_id") for a in turn.actions_taken
                    if a["action"] == "create_handoff_ticket" and a.get("ticket_id")), None)
     if ticket is None:
@@ -78,7 +82,7 @@ def enqueue(turn, session, engine) -> dict[str, Any] | None:
 
     intent = (turn.extracted or {}).get("intent")
     summary = INTENT_SUMMARY[turn.language].get(intent, INTENT_SUMMARY[turn.language][None])
-    excerpt = redact(turn.message)[:160]
+    excerpt = redact(customer_message or turn.message)[:160]
     txn = turn.candidates[0] if len(turn.candidates) == 1 else None
 
     package = build_package(

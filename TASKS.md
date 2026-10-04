@@ -160,21 +160,21 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 
 ## DÍA 6 — Feature freeze y primera evaluación (vie 3 oct)
 
-- [ ] **P0** `[SHIP]` **FEATURE FREEZE.** Desde acá solo se arregla lo que la evaluación muestre roto.
+- [x] **P0** `[SHIP]` **FEATURE FREEZE.** Desde acá solo se arregla lo que la evaluación muestre roto. **→ congelado tras v3; solo correcciones documentadas**
 - [x] **P0** `[EVAL]` Baseline de sistema: "LLM ingenuo con todas las herramientas y la política en el prompt". — *Hecho: corre sobre el mismo eval set.* **→ eval/runner.py, NaiveAgent**
-- [ ] **P0** `[EVAL]` Corrida completa: sistema propuesto vs baseline sobre el mismo workload. — *Hecho: `eval/reports/scorecard_v1.md` generado.*
-- [ ] **P0** `[EVAL]` Scorecard con **denominadores** en cada fila: safe automated resolution, containment, escalation quality (transferencias omitidas y innecesarias), unsafe outcomes (por tipo), latencia p50/p95, costo por caso y por resolución exitosa. — *Hecho: tabla completa, sin celdas vacías; "no definido" donde corresponda.*
-- [ ] **P1** `[EVAL]` Cortes por idioma (es/pt), país y segmento, con nota de muestra pequeña. — *Hecho: tabla segmentada.*
-- [ ] **P1** `[SHIP]` Deploy accesible + `docker compose up` reproducible. **Cloud no es obligatorio** (confirmado por los organizadores): si es local, documentar la ruta a producción. — *Hecho: un tercero puede levantarlo siguiendo el README.*
+- [x] **P0** `[EVAL]` Corrida completa: sistema propuesto vs baseline sobre el mismo workload. — *Hecho: `eval/reports/scorecard_v1.md` generado.* **→ baseline + v1 (pre-registrada) + v2 + v3 en eval/reports/**
+- [x] **P0** `[EVAL]` Scorecard con **denominadores** en cada fila: safe automated resolution, containment, escalation quality (transferencias omitidas y innecesarias), unsafe outcomes (por tipo), latencia p50/p95, costo por caso y por resolución exitosa. — *Hecho: tabla completa, sin celdas vacías; "no definido" donde corresponda.* **→ docs/experiments.md (E-06) y vista Evaluación**
+- [x] **P1** `[EVAL]` Cortes por idioma (es/pt), país y segmento, con nota de muestra pequeña. — *Hecho: tabla segmentada.* **→ by_language en cada reporte; segmento/país no (muestra chica)**
+- [~] **P1** `[SHIP]` Deploy accesible + `docker compose up` reproducible. **→ make serve probado; Dockerfile multi-etapa escrito, SIN PROBAR (daemon de Docker apagado)** **Cloud no es obligatorio** (confirmado por los organizadores): si es local, documentar la ruta a producción. — *Hecho: un tercero puede levantarlo siguiendo el README.*
 
 ---
 
 ## DÍA 7 — Arreglos y documentación (sáb 4 oct — DÍA DE ENTREGA)
 
-- [ ] **P0** `[EVAL]` Arreglar lo que la evaluación mostró roto. **Sin tocar el eval set.** — *Hecho: scorecard final regenerado.*
+- [x] **P0** `[EVAL]` Arreglar lo que la evaluación mostró roto. **Sin tocar el eval set.** — *Hecho: scorecard final regenerado.* **→ v1: conformal inutilizable en es -> v2; v2: B01-0072 inseguro -> v3 con test de regresión**
 - [x] **P0** `[SHIP]` `docs/limitations.md`: portugués sin datos reales, texto plantillado, normativa CO/AR sintética, etiquetas sin señal, tamaños de muestra, qué falta para producción. — *Hecho: archivo completo.* **(Los organizadores dijeron explícitamente que documentar lo que falta suma.)** **→ docs/limitations.md**
-- [ ] **P0** `[SHIP]` README final: pitch, arquitectura, cómo correr, scorecard, limitaciones. — *Hecho: alguien que no conoce el proyecto lo levanta siguiendo el README.*
-- [ ] **P0** `[SHIP]` Slides (4-6): problema y datos → arquitectura → demo de los 3 caminos → scorecard → ruta a producción. — *Hecho: PDF listo.*
+- [x] **P0** `[SHIP]` README final: pitch, arquitectura, cómo correr, scorecard, limitaciones. — *Hecho: alguien que no conoce el proyecto lo levanta siguiendo el README.* **→ README.md**
+- [x] **P0** `[SHIP]` Slides (4-6): problema y datos → arquitectura → demo de los 3 caminos → scorecard → ruta a producción. — *Hecho: PDF listo.* **→ docs/VerifiCargo.pptx (6 slides, números leídos de los reportes)**
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
 - [ ] **P0** `[SHIP]` **ENVIAR a hackathon.admin@factored.ai**: link del repo, link del deploy, slides, video. — *Hecho: email enviado con acuse.*
 

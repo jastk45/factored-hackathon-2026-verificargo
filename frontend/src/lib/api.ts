@@ -79,6 +79,17 @@ export interface HandoffPackage {
   priority: "low" | "normal" | "high" | "critical"
 }
 
+export interface Txn {
+  transaction_id: string
+  date: string
+  merchant: string
+  category: string | null
+  amount: number
+  currency: string
+  status: string
+  channel: string
+}
+
 export interface QueueItem {
   status: string
   queued_at: string
@@ -117,6 +128,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ otp }),
     }),
+  transactions: (cid: string) => call<Txn[]>(`/api/conversations/${cid}/transactions`),
   handoffs: (status: "pending" | "resolved") => call<QueueItem[]>(`/api/handoffs?status=${status}`),
   resolve: (id: string, decision: string, note: string) =>
     call<{ ok: boolean }>(`/api/handoffs/${id}/resolve`, {
