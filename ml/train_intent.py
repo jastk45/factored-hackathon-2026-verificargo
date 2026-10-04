@@ -42,7 +42,12 @@ MODEL_DIR = REPO_ROOT / "models" / "intent"
 REPORT = REPO_ROOT / "eval" / "reports" / "intent_classifier.json"
 
 ENCODER = "intfloat/multilingual-e5-small"
-ALPHA = 0.10
+ALPHA = 0.10           # pre-registrado (E-05)
+# Punto de operación desplegado, elegido DESPUÉS de ver el barrido de α sobre
+# la mitad de evaluación del test: con 0,10 el sistema pregunta en 54 de 64
+# casos; con 0,30 decide casi siempre pero yerra el flujo en 15%, y mandar
+# "me robaron la tarjeta" al flujo de disputa omite un escalamiento.
+DEPLOY_ALPHA = 0.20
 FIXED_THRESHOLD = 0.70
 MAX_CLARIFY = 3
 SEED = 20261003
@@ -222,32 +227,57 @@ def main() -> None:
         ev += members[half:]
     cal, ev = np.array(sorted(cal)), np.array(sorted(ev))
 
-    qhat = {lang: fit_qhat(prob_dep[cal][lang_te[cal] == lang],
-                           y_te[cal][lang_te[cal] == lang], ALPHA)
+    # v2 (3 oct): la conformal se calibra sobre la probabilidad de cada GRUPO
+    # de flujo, que es la variable que el sistema decide. Calibrar sobre las 8
+    # clases (v1) inflaba el cuantil con confusiones que no cambian ninguna
+    # decisión ("no reconocido" vs "duplicado") y hacía preguntar casi siempre.
+    G = sorted(set(GROUPS.values()))
+    member = np.array([[GROUPS[i] == g for g in G] for i in INTENTS], dtype=float)
+    prob_grp = prob_dep @ member                       # (n, grupos)
+    y_grp = np.array([G.index(GROUPS[INTENTS[y]]) for y in y_te])
+
+    qhat_class = {lang: fit_qhat(prob_dep[cal][lang_te[cal] == lang],
+                                 y_te[cal][lang_te[cal] == lang], ALPHA)
+                  for lang in ("es", "pt")}
+    qhat = {lang: fit_qhat(prob_grp[cal][lang_te[cal] == lang],
+                           y_grp[cal][lang_te[cal] == lang], ALPHA)
             for lang in ("es", "pt")}
-    qhat_global = fit_qhat(prob_dep[cal], y_te[cal], ALPHA)
+    qhat_global = fit_qhat(prob_grp[cal], y_grp[cal], ALPHA)
 
     def evaluate(strategy: str) -> dict:
         per = defaultdict(lambda: defaultdict(int))
         for i in ev:
-            p, y, lang = prob_dep[i], int(y_te[i]), lang_te[i]
-            if strategy == "fixed":
-                top = int(p.argmax())
-                pset = [top] if p[top] >= FIXED_THRESHOLD else []
-            elif strategy == "conformal_global":
-                pset = prediction_set(p, qhat_global)
+            lang = lang_te[i]
+            if strategy == "class_mondrian_v1":
+                p, y = prob_dep[i], int(y_te[i])
+                pset_cls = prediction_set(p, qhat_class[lang])
+                gset = sorted({G.index(group_of(c)) for c in pset_cls})
+                covered = int(y in pset_cls)
             else:
-                pset = prediction_set(p, qhat[lang])
-            r = route(pset)
+                pg, yg = prob_grp[i], int(y_grp[i])
+                if strategy == "fixed":
+                    top = int(pg.argmax())
+                    gset = [top] if pg[top] >= FIXED_THRESHOLD else []
+                elif strategy == "group_global":
+                    gset = prediction_set(pg, qhat_global)
+                else:
+                    gset = prediction_set(pg, qhat[lang])
+                covered = int(yg in gset)
+            yg = int(y_grp[i])
+            if not gset:
+                r = "ESCALATE"
+            elif len(gset) == 1:
+                r = "ABSTAIN" if G[gset[0]] == "out_of_scope" else "ACT"
+            else:
+                r = "CLARIFY"
             for key in (lang, "all"):
                 d = per[key]
                 d["n"] += 1
-                d["covered"] += int(y in pset)
+                d["covered"] += covered
                 d[r] += 1
                 if r == "ACT":
-                    # Error de ruteo: el flujo elegido no es el de la intención real.
-                    d["act_errors"] += int(group_of(pset[0]) != group_of(y))
-                d["set_size_sum"] += len(pset)
+                    d["act_errors"] += int(gset[0] != yg)
+                d["set_size_sum"] += len(gset)
         out = {}
         for key, d in per.items():
             n = d["n"]
@@ -261,7 +291,7 @@ def main() -> None:
             }
         return out
 
-    conformal = {s: evaluate(s) for s in ("fixed", "conformal_global", "conformal_mondrian")}
+    conformal = {s: evaluate(s) for s in ("fixed", "class_mondrian_v1", "group_global", "group_mondrian")}
     print(f"\nconformal (α={ALPHA}, objetivo de cobertura {1 - ALPHA:.0%}) · "
           f"medido sobre {len(ev)} casos no usados para calibrar")
     print(f"{'estrategia':<20} {'idioma':<5} {'cobert.':>8} {'ACT':>4} {'CLAR':>5} "
@@ -272,6 +302,31 @@ def main() -> None:
             err = "—" if d["act_error_rate"] is None else f"{d['act_error_rate']:.1%}"
             print(f"{s:<20} {lang:<5} {d['coverage']:>8.1%} {d['act']:>4} "
                   f"{d['clarify']:>5} {d['abstain']:>5} {d['escalate']:>4} {err:>13}")
+
+    # --- barrido de alfa: la curva riesgo-cobertura -------------------
+    # α es una decisión de negocio: la tasa de ruteo equivocado que se acepta.
+    sweep = []
+    for a_ in (0.05, 0.10, 0.20, 0.30, 0.40):
+        q_ = {lang: fit_qhat(prob_grp[cal][lang_te[cal] == lang],
+                             y_grp[cal][lang_te[cal] == lang], a_) for lang in ("es", "pt")}
+        cov = act = err = clar = 0
+        for i in ev:
+            gset = prediction_set(prob_grp[i], q_[lang_te[i]])
+            cov += int(int(y_grp[i]) in gset)
+            if len(gset) == 1:
+                act += 1
+                err += int(gset[0] != int(y_grp[i]))
+            elif len(gset) > 1:
+                clar += 1
+        sweep.append({"alpha": a_, "qhat": {k: round(v, 3) for k, v in q_.items()},
+                      "coverage": round(cov / len(ev), 3), "decides": act,
+                      "clarifies": clar, "routing_errors": err, "n": int(len(ev))})
+    print()
+    print(f"barrido de α (conformal por grupo y por idioma, {len(ev)} casos):")
+    print(f"{'α':>5} {'qhat es':>8} {'qhat pt':>8} {'cobert.':>8} {'decide':>7} {'pregunta':>9} {'errores':>8}")
+    for s in sweep:
+        print(f"{s['alpha']:>5} {s['qhat']['es']:>8} {s['qhat']['pt']:>8} {s['coverage']:>8.1%} "
+              f"{s['decides']:>7} {s['clarifies']:>9} {s['routing_errors']:>8}")
 
     # --- matriz de confusión del brazo desplegado ----------------------
     cm = confusion_matrix(y_te, prob_dep.argmax(axis=1), labels=range(len(INTENTS)))
@@ -285,8 +340,13 @@ def main() -> None:
         head["model"] = A
         head["vectorizer"] = tfidf
     joblib.dump(head, MODEL_DIR / "head.joblib")
+    qhat_deploy = {lang: fit_qhat(prob_grp[cal][lang_te[cal] == lang],
+                                  y_grp[cal][lang_te[cal] == lang], DEPLOY_ALPHA)
+                   for lang in ("es", "pt")}
     (MODEL_DIR / "conformal.json").write_text(json.dumps({
-        "alpha": ALPHA, "qhat": qhat, "qhat_global": qhat_global,
+        "alpha": DEPLOY_ALPHA, "alpha_preregistered": ALPHA, "qhat_preregistered": qhat,
+        "level": "group", "groups": G, "qhat": qhat_deploy,
+        "qhat_global": qhat_global, "qhat_class_v1": qhat_class,
         "max_clarify": MAX_CLARIFY, "calibration_n": int(len(cal)),
     }, indent=2), encoding="utf-8")
 
@@ -307,6 +367,7 @@ def main() -> None:
                        "worst_language_gap": round(worst_lang_gap, 4),
                        "accepted": accept, "deployed": deployed},
         "conformal": conformal,
+        "alpha_sweep": sweep,
         "confusion_matrix": {"labels": INTENTS, "matrix": cm.tolist()},
         "encode_ms_per_message": round(per_msg_ms, 2),
         "seconds": round(time.perf_counter() - started, 1),

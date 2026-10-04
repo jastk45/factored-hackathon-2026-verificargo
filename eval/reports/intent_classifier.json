@@ -1,7 +1,7 @@
 {
   "experiment": "E-05",
-  "run_at": "2026-10-03T22:47:06",
-  "git_commit": "1016202",
+  "run_at": "2026-10-04T11:19:14",
+  "git_commit": "f7c32f0",
   "encoder": "intfloat/multilingual-e5-small",
   "data": {
     "train_en": 4378,
@@ -56,68 +56,36 @@
     "fixed": {
       "es": {
         "n": 32,
-        "coverage": 0.312,
-        "act": 9,
+        "coverage": 0.562,
+        "act": 19,
         "clarify": 0,
         "abstain": 2,
-        "escalate": 21,
-        "act_error_rate": 0.111,
-        "avg_set_size": 0.34
+        "escalate": 11,
+        "act_error_rate": 0.158,
+        "avg_set_size": 0.66
       },
       "all": {
         "n": 64,
-        "coverage": 0.359,
-        "act": 22,
+        "coverage": 0.594,
+        "act": 39,
         "clarify": 0,
         "abstain": 4,
-        "escalate": 38,
-        "act_error_rate": 0.136,
-        "avg_set_size": 0.41
+        "escalate": 21,
+        "act_error_rate": 0.128,
+        "avg_set_size": 0.67
       },
       "pt": {
         "n": 32,
-        "coverage": 0.406,
-        "act": 13,
+        "coverage": 0.625,
+        "act": 20,
         "clarify": 0,
         "abstain": 2,
-        "escalate": 17,
-        "act_error_rate": 0.154,
-        "avg_set_size": 0.47
+        "escalate": 10,
+        "act_error_rate": 0.1,
+        "avg_set_size": 0.69
       }
     },
-    "conformal_global": {
-      "es": {
-        "n": 32,
-        "coverage": 0.875,
-        "act": 9,
-        "clarify": 22,
-        "abstain": 1,
-        "escalate": 0,
-        "act_error_rate": 0.111,
-        "avg_set_size": 3.75
-      },
-      "all": {
-        "n": 64,
-        "coverage": 0.922,
-        "act": 18,
-        "clarify": 44,
-        "abstain": 2,
-        "escalate": 0,
-        "act_error_rate": 0.111,
-        "avg_set_size": 3.64
-      },
-      "pt": {
-        "n": 32,
-        "coverage": 0.969,
-        "act": 9,
-        "clarify": 22,
-        "abstain": 1,
-        "escalate": 0,
-        "act_error_rate": 0.111,
-        "avg_set_size": 3.53
-      }
-    },
-    "conformal_mondrian": {
+    "class_mondrian_v1": {
       "es": {
         "n": 32,
         "coverage": 0.938,
@@ -126,7 +94,7 @@
         "abstain": 0,
         "escalate": 0,
         "act_error_rate": 0.143,
-        "avg_set_size": 5.0
+        "avg_set_size": 3.34
       },
       "all": {
         "n": 64,
@@ -136,7 +104,7 @@
         "abstain": 0,
         "escalate": 0,
         "act_error_rate": 0.091,
-        "avg_set_size": 5.06
+        "avg_set_size": 3.33
       },
       "pt": {
         "n": 32,
@@ -146,10 +114,136 @@
         "abstain": 0,
         "escalate": 0,
         "act_error_rate": 0.0,
-        "avg_set_size": 5.12
+        "avg_set_size": 3.31
+      }
+    },
+    "group_global": {
+      "es": {
+        "n": 32,
+        "coverage": 0.812,
+        "act": 12,
+        "clarify": 20,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.083,
+        "avg_set_size": 2.16
+      },
+      "all": {
+        "n": 64,
+        "coverage": 0.891,
+        "act": 22,
+        "clarify": 42,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.091,
+        "avg_set_size": 2.25
+      },
+      "pt": {
+        "n": 32,
+        "coverage": 0.969,
+        "act": 10,
+        "clarify": 22,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.1,
+        "avg_set_size": 2.34
+      }
+    },
+    "group_mondrian": {
+      "es": {
+        "n": 32,
+        "coverage": 0.938,
+        "act": 6,
+        "clarify": 26,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.167,
+        "avg_set_size": 3.38
+      },
+      "all": {
+        "n": 64,
+        "coverage": 0.953,
+        "act": 10,
+        "clarify": 54,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.1,
+        "avg_set_size": 3.36
+      },
+      "pt": {
+        "n": 32,
+        "coverage": 0.969,
+        "act": 4,
+        "clarify": 28,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.0,
+        "avg_set_size": 3.34
       }
     }
   },
+  "alpha_sweep": [
+    {
+      "alpha": 0.05,
+      "qhat": {
+        "es": 0.987,
+        "pt": 0.98
+      },
+      "coverage": 0.984,
+      "decides": 7,
+      "clarifies": 57,
+      "routing_errors": 0,
+      "n": 64
+    },
+    {
+      "alpha": 0.1,
+      "qhat": {
+        "es": 0.975,
+        "pt": 0.979
+      },
+      "coverage": 0.953,
+      "decides": 10,
+      "clarifies": 54,
+      "routing_errors": 1,
+      "n": 64
+    },
+    {
+      "alpha": 0.2,
+      "qhat": {
+        "es": 0.91,
+        "pt": 0.934
+      },
+      "coverage": 0.875,
+      "decides": 26,
+      "clarifies": 38,
+      "routing_errors": 3,
+      "n": 64
+    },
+    {
+      "alpha": 0.3,
+      "qhat": {
+        "es": 0.671,
+        "pt": 0.51
+      },
+      "coverage": 0.797,
+      "decides": 60,
+      "clarifies": 0,
+      "routing_errors": 9,
+      "n": 64
+    },
+    {
+      "alpha": 0.4,
+      "qhat": {
+        "es": 0.48,
+        "pt": 0.411
+      },
+      "coverage": 0.734,
+      "decides": 53,
+      "clarifies": 0,
+      "routing_errors": 6,
+      "n": 64
+    }
+  ],
   "confusion_matrix": {
     "labels": [
       "unrecognized_charge",
@@ -244,6 +338,6 @@
       ]
     ]
   },
-  "encode_ms_per_message": 1.76,
-  "seconds": 23.6
+  "encode_ms_per_message": 1.87,
+  "seconds": 25.4
 }

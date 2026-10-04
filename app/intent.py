@@ -82,11 +82,14 @@ class IntentClassifier:
     def decide(self, text: str, language: str) -> IntentDecision:
         p = self.probabilities(text)
         qhat = self.qhat.get(language, self.qhat_global)
-        pset = [self.intents[c] for c in range(len(p)) if 1.0 - p[c] <= qhat]
-        top = int(p.argmax())
-        top_intent = self.intents[top]
-
-        groups = tuple(sorted({GROUPS[i] for i in pset}))
+        # La garantía se calibra sobre la probabilidad de cada grupo de flujo
+        # (suma de sus clases), que es lo que se decide (E-05 v2).
+        group_p: dict[str, float] = {}
+        for i, intent in enumerate(self.intents):
+            group_p[GROUPS[intent]] = group_p.get(GROUPS[intent], 0.0) + float(p[i])
+        groups = tuple(sorted(g for g, pg in group_p.items() if 1.0 - pg <= qhat))
+        pset = [i for i in self.intents if GROUPS[i] in groups]
+        top_intent = self.intents[int(p.argmax())]
 
         if not pset:
             route, reason = "ESCALATE", "conjunto vacío: ninguna intención es plausible"

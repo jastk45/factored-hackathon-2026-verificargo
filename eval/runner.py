@@ -377,6 +377,7 @@ def main() -> None:
     parser.add_argument("--system", choices=["proposed", "baseline"])
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--report", action="store_true")
+    parser.add_argument("--tag", default="", help="sufijo del reporte, p. ej. v2")
     args = parser.parse_args()
 
     load_dotenv(REPO_ROOT / ".env")
@@ -409,7 +410,7 @@ def main() -> None:
 
     card = scorecard(rows)
     REPORTS.mkdir(parents=True, exist_ok=True)
-    out = REPORTS / f"system_{args.system}.json"
+    out = REPORTS / f"system_{args.system}{'_' + args.tag if args.tag else ''}.json"
     out.write_text(json.dumps({
         "system": args.system, "model": cfg["model"],
         "eval_set": CASES.name,
