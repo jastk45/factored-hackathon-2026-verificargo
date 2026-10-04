@@ -1,0 +1,128 @@
+{"case_id": "INT-ES-UNRECO-01", "text": "Me aparece un cargo de 450 pesos que yo no hice", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-02", "text": "Hay un cobro en mi tarjeta de un lugar que no conozco", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-03", "text": "no reconozco una compra de ayer en mi estado de cuenta", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-04", "text": "Che, me figura un consumo en la tarjeta que no es mío", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-05", "text": "Buenas, me salió un débito raro, yo no compré nada en ese comercio", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-06", "text": "veo una transacción que no autoricé en mi tarjeta de crédito", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-07", "text": "Qué es este cargo de NETFLX? yo no tengo esa suscripción", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-UNRECO-08", "text": "tengo un cargo q no reconosco de 89.900", "intent": "unrecognized_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-01", "text": "Apareceu uma cobrança no meu cartão que eu não fiz", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-02", "text": "Não reconheço uma compra de ontem na fatura", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-03", "text": "tem um débito estranho no meu cartão, não comprei nada nessa loja", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-04", "text": "Olá, vi uma transação que não autorizei no cartão de crédito", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-05", "text": "que cobrança é essa de 120 reais? não conheço essa empresa", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-06", "text": "nao reconheco essa compra de 350", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-07", "text": "Tem um gasto na minha fatura que não é meu", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-UNRECO-08", "text": "Hola, tenho uma cobrança que no reconozco no cartão", "intent": "unrecognized_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-01", "text": "Me cobraron dos veces la misma compra", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-02", "text": "aparece el mismo cargo duplicado en mi tarjeta", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-03", "text": "Pagué una vez en el súper y me lo cobraron doble", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-04", "text": "che, me debitaron dos veces el mismo pago de la luz", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-05", "text": "hay dos cargos iguales del mismo día, solo compré una vez", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-06", "text": "me cobraron 3 veces el uber de anoche", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-07", "text": "el cobro de mi suscripción salió repetido este mes", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DUPLIC-08", "text": "me hicieron el cargo dos veces por el mismo pedido", "intent": "duplicate_charge", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-01", "text": "Fui cobrado duas vezes pela mesma compra", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-02", "text": "a mesma cobrança apareceu duplicada no cartão", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-03", "text": "paguei uma vez só e cobraram em dobro", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-04", "text": "tem duas cobranças iguais no mesmo dia", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-05", "text": "cobraram três vezes a corrida do uber", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-06", "text": "minha assinatura veio cobrada repetida esse mês", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-07", "text": "debitaram duas vezes o mesmo pagamento", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DUPLIC-08", "text": "a compra do mercado saiu duplicada na fatura", "intent": "duplicate_charge", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-01", "text": "Compré algo de 200 pesos y me cobraron 2000", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-02", "text": "el monto que me cobraron no es el que pagué en la tienda", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-03", "text": "me cobraron más de lo que decía el ticket", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-04", "text": "el tipo de cambio que me aplicaron está mal, me cobraron de más", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-05", "text": "pagué 50 mil y en el extracto aparecen 80 mil", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-06", "text": "me cobraron una comisión que nadie me avisó", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-07", "text": "el cajero me dio menos plata de la que me descontaron", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-WRONG_-08", "text": "el cargo es mayor al precio acordado con el comercio", "intent": "wrong_amount", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-01", "text": "comprei algo de 100 reais e cobraram 1000", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-02", "text": "o valor cobrado não é o que paguei na loja", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-03", "text": "cobraram mais do que estava no recibo", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-04", "text": "a taxa de câmbio aplicada está errada, cobraram a mais", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-05", "text": "o caixa eletrônico me deu menos dinheiro do que foi debitado", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-06", "text": "cobraram uma tarifa que ninguém me avisou", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-07", "text": "paguei 50 e na fatura aparece 80", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-WRONG_-08", "text": "o valor da cobrança é maior que o combinado", "intent": "wrong_amount", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-01", "text": "Pagué un pedido en línea y nunca me llegó", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-02", "text": "compré unos zapatos y no recibí nada", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-03", "text": "pedí un reembolso hace semanas y todavía no aparece", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-04", "text": "la tienda me canceló la compra pero no me devolvieron la plata", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-05", "text": "quiero que me devuelvan el dinero de una compra que no llegó", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-06", "text": "pagué un servicio que nunca me prestaron", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-07", "text": "el vendedor no me mandó el producto y ya me cobraron", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-MERCHA-08", "text": "quiero pedir el reembolso de una compra", "intent": "merchandise_not_received", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-01", "text": "paguei um pedido online e nunca chegou", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-02", "text": "comprei um tênis e não recebi nada", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-03", "text": "pedi reembolso há semanas e ainda não apareceu", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-04", "text": "a loja cancelou a compra mas não devolveu o dinheiro", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-05", "text": "quero meu dinheiro de volta de uma compra que não chegou", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-06", "text": "paguei por um serviço que nunca foi prestado", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-07", "text": "o vendedor não enviou o produto e já me cobraram", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-MERCHA-08", "text": "quero solicitar o estorno de uma compra", "intent": "merchandise_not_received", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-01", "text": "Me robaron la cartera con la tarjeta adentro", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-02", "text": "perdí mi tarjeta de débito", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-03", "text": "creo que clonaron mi tarjeta", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-04", "text": "no encuentro mi tarjeta desde ayer", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-05", "text": "me asaltaron y se llevaron mis tarjetas", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-06", "text": "alguien tiene los datos de mi tarjeta, me llegó un SMS de una compra", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-07", "text": "se me cayó la tarjeta en el taxi", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-CARD_L-08", "text": "me robaron el celular que tenía la tarjeta vinculada", "intent": "card_lost_stolen", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-01", "text": "roubaram minha carteira com o cartão dentro", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-02", "text": "perdi meu cartão de débito", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-03", "text": "acho que clonaram meu cartão", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-04", "text": "não encontro meu cartão desde ontem", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-05", "text": "fui assaltado e levaram meus cartões", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-06", "text": "alguém está com os dados do meu cartão", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-07", "text": "esqueci o cartão no táxi", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-CARD_L-08", "text": "roubaram meu celular com o cartão cadastrado", "intent": "card_lost_stolen", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-01", "text": "¿cómo va mi reclamo del cargo que no reconocí?", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-02", "text": "quiero saber el estado de mi disputa", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-03", "text": "hace una semana abrí un caso, ¿ya lo resolvieron?", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-04", "text": "¿ya me devolvieron el dinero del reclamo?", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-05", "text": "mi pago aparece pendiente desde hace días", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-06", "text": "¿en qué estado está mi aclaración?", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-07", "text": "la transferencia sigue pendiente, ¿qué pasa?", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-DISPUT-08", "text": "quería consultar mi número de caso", "intent": "dispute_status", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-01", "text": "como está minha contestação da cobrança?", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-02", "text": "quero saber o status da minha disputa", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-03", "text": "abri um chamado semana passada, já resolveram?", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-04", "text": "já devolveram o dinheiro da reclamação?", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-05", "text": "meu pagamento está pendente há dias", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-06", "text": "em que pé está minha contestação?", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-07", "text": "a transferência continua pendente, o que houve?", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-DISPUT-08", "text": "queria consultar o número do meu protocolo", "intent": "dispute_status", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-01", "text": "¿cuánto tiempo tengo para reclamar un cargo?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-02", "text": "¿cuántos días tarda el banco en responder una disputa?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-03", "text": "¿qué necesito para disputar un cargo?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-04", "text": "¿por qué me rechazaron la compra con la tarjeta?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-05", "text": "¿me devuelven el dinero mientras investigan?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-06", "text": "¿cuál es el procedimiento para desconocer una compra?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-07", "text": "¿por qué no pude sacar plata del cajero?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-POLICY-08", "text": "¿puedo cancelar una transferencia que ya hice?", "intent": "policy_question", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-01", "text": "quanto tempo eu tenho para contestar uma cobrança?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-02", "text": "em quantos dias o banco responde uma contestação?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-03", "text": "o que preciso para contestar uma compra?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-04", "text": "por que minha compra no cartão foi recusada?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-05", "text": "vocês devolvem o dinheiro enquanto investigam?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-06", "text": "qual é o procedimento para contestar uma compra?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-07", "text": "por que não consegui sacar no caixa eletrônico?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-POLICY-08", "text": "posso cancelar uma transferência que já fiz?", "intent": "policy_question", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-01", "text": "quiero abrir una cuenta de inversión en criptomonedas", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-02", "text": "¿cuál es el horario de la sucursal del centro?", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-03", "text": "quiero cambiar mi número de celular registrado", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-04", "text": "¿me pueden subir el límite de crédito?", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-05", "text": "¿cómo activo mi tarjeta nueva?", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-06", "text": "quiero pedir un préstamo personal", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-07", "text": "¿qué clima va a hacer mañana?", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-ES-OUT_OF-08", "text": "olvidé mi PIN, ¿cómo lo cambio?", "intent": "out_of_scope", "language": "es", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-01", "text": "quero abrir uma conta de investimento em cripto", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-02", "text": "qual o horário da agência do centro?", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-03", "text": "quero mudar meu número de celular cadastrado", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-04", "text": "vocês podem aumentar meu limite?", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-05", "text": "como ativo meu cartão novo?", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-06", "text": "quero pedir um empréstimo pessoal", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-07", "text": "como vai estar o tempo amanhã?", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}
+{"case_id": "INT-PT-OUT_OF-08", "text": "esqueci minha senha, como troco?", "intent": "out_of_scope", "language": "pt", "origin": "team-generated"}

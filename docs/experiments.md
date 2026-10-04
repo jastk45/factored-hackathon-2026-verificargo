@@ -5,6 +5,47 @@ está acá es una estimación: cada número sale de una corrida reproducible.
 
 ---
 
+## E-05 · PRE-REGISTRO — clasificador de intención
+
+**Escrito el 3 oct 2026, antes de entrenar.** Se commitea antes de ver ningún
+resultado; el historial de git es la prueba.
+
+**Pregunta.** ¿Un encoder multilingüe con cabeza lineal clasifica las 8
+intenciones mejor que un baseline TF-IDF, sobre mensajes en español y
+portugués escritos a mano?
+
+**Datos.**
+- Entrenamiento: BANKING77 `train` en inglés (4.378) + 240 frases de ese mismo
+  split traducidas a es y pt con qwen3:1.7b (480). Origen `external-public`.
+- Test: `eval/cases/intent_test_v1.jsonl`, 128 mensajes escritos a mano
+  (8 intenciones × 8 × 2 idiomas). Origen `team-generated`. Ninguna frase sale
+  de BANKING77 ni del traductor.
+
+**Brazos.**
+- **A — baseline:** TF-IDF de caracteres (2-5) + regresión logística, mismos
+  datos de entrenamiento que C.
+- **B — zero-shot cross-lingual:** `intfloat/multilingual-e5-small` congelado +
+  regresión logística, entrenado **solo en inglés**.
+- **C — translate-train (candidato):** el mismo encoder + regresión logística,
+  entrenado en inglés + traducciones es/pt.
+
+**Métrica principal:** macro-F1 sobre los 128 casos, reportada global y por
+idioma. Secundarias: recall de `out_of_scope`, ECE.
+
+**Criterio de aceptación:** C se despliega si supera a A por **≥ 3 puntos de
+macro-F1** en el test completo **y** no queda más de 10 puntos por debajo de A
+en ningún idioma. Si no, se despliega A y se documenta.
+
+**Abstención conformal (D-10).** Split conformal con cuantil por idioma,
+α = 0,10. Calibración: la mitad del test escrito a mano (estratificada por
+idioma e intención, semilla fija); la cobertura se mide sobre la otra mitad.
+Se compara contra un umbral fijo de confianza 0,7.
+
+**Limitación conocida de antemano.** 128 casos (64 para medir cobertura) es una
+muestra pequeña: las diferencias de pocos puntos no son concluyentes.
+
+---
+
 ## E-01 · Extracción con qwen3:1.7b — línea base
 
 **28 sep 2026** · `eval/extraction_bench.py` · fixture `eval`, 80 casos (60 es, 20 pt)
