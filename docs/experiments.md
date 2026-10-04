@@ -44,6 +44,50 @@ Se compara contra un umbral fijo de confianza 0,7.
 **Limitación conocida de antemano.** 128 casos (64 para medir cobertura) es una
 muestra pequeña: las diferencias de pocos puntos no son concluyentes.
 
+### E-05 · Resultados (corrida del 3 oct, después del pre-registro)
+
+`ml/train_intent.py` · reporte `eval/reports/intent_classifier.json` · corpus
+traducido versionado en `ml/corpus/` (mismo hash que el reporte).
+
+| Brazo | macro-F1 | es (n=64) | pt (n=64) | Recall OOS | ECE |
+|---|---:|---:|---:|---:|---:|
+| A — TF-IDF char 2-5 + LR | 0,550 | 0,563 | 0,531 | 1,000 | 0,146 |
+| B — e5 congelado, solo inglés | 0,632 | 0,603 | 0,662 | 1,000 | 0,112 |
+| **C — e5 + traducciones (desplegado)** | **0,681** | **0,622** | **0,742** | 1,000 | 0,132 |
+
+**Criterio:** ganancia C − A = **+13,1 puntos** (umbral +3); peor brecha por
+idioma = +5,9 (umbral −10). **Se acepta C.**
+
+Lectura:
+- translate-train (C) supera a zero-shot (B) por 4,9 puntos: las 480
+  traducciones, aunque imperfectas (qwen3 escribe "Minha cartão"), aportan.
+- C rinde mejor en portugués que en español. Una explicación plausible, no
+  verificada: el test en español tiene más jerga regional ("che, me figura un
+  consumo", "q no reconosco") que el de portugués.
+- Inferencia: 1,8 ms por mensaje en CPU, frente a 2,3-4,8 s del LLM.
+
+**Abstención conformal (64 casos no usados para calibrar, α = 0,10):**
+
+| Estrategia | Cobertura es | Cobertura pt | Actúa | Pregunta | Error al actuar |
+|---|---:|---:|---:|---:|---:|
+| Umbral fijo 0,7 | 31,2% | 40,6% | 22 | 0 (escala 38) | 13,6% (3/22) |
+| Conformal global | **87,5%** ✗ | 96,9% | 18 | 44 | 11,1% (2/18) |
+| **Conformal por idioma** | **93,8%** | **96,9%** | 11 | 53 | 9,1% (1/11) |
+
+El cuantil global **sub-cubre en español** (87,5%, por debajo del 90%
+objetivo) y el cuantil por idioma lo corrige. Es la hipótesis que motivó D-10,
+y se cumple. El umbral fijo, el enfoque "obvio", cubre apenas un tercio.
+
+**El costo es explícito:** el clasificador es modesto, así que el conjunto
+suele mezclar flujos y el sistema **pregunta** en 53 de 64 casos. Es la
+contracara de la garantía: no actúa sobre una intención dudosa.
+
+**Cambio de diseño tras el ensayo (no tras este test).** La regla original
+escalaba a un humano cuando el conjunto mezclaba más de 3 flujos; en el ensayo
+con datos parciales eso escalaba casi todo en el primer turno. Se cambió a
+*preguntar* listando los flujos posibles, y escalar solo si el conjunto está
+vacío o se agotan las aclaraciones. El conjunto —y su cobertura— no cambia.
+
 ---
 
 ## E-01 · Extracción con qwen3:1.7b — línea base

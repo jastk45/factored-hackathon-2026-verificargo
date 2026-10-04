@@ -112,13 +112,26 @@ def prediction_set(p: np.ndarray, qhat: float) -> list[int]:
     return [c for c in range(len(p)) if 1.0 - p[c] <= qhat]
 
 
+GROUPS = {
+    "unrecognized_charge": "dispute", "duplicate_charge": "dispute",
+    "wrong_amount": "dispute", "merchandise_not_received": "dispute",
+    "card_lost_stolen": "card", "dispute_status": "status",
+    "policy_question": "policy", "out_of_scope": "out_of_scope",
+}
+
+
 def route(pset: list[int]) -> str:
-    oos = INTENTS.index("out_of_scope")
-    if len(pset) == 1:
-        return "ABSTAIN" if pset[0] == oos else "ACT"
-    if 2 <= len(pset) <= MAX_CLARIFY:
-        return "CLARIFY"
-    return "ESCALATE"  # vacío o demasiado grande
+    """La misma regla que app/intent.py: se rutea por grupo de flujo."""
+    if not pset:
+        return "ESCALATE"
+    groups = {GROUPS[INTENTS[c]] for c in pset}
+    if len(groups) == 1:
+        return "ABSTAIN" if groups == {"out_of_scope"} else "ACT"
+    return "CLARIFY"
+
+
+def group_of(c: int) -> str:
+    return GROUPS[INTENTS[c]]
 
 
 def main() -> None:
@@ -232,7 +245,8 @@ def main() -> None:
                 d["covered"] += int(y in pset)
                 d[r] += 1
                 if r == "ACT":
-                    d["act_errors"] += int(pset[0] != y)
+                    # Error de ruteo: el flujo elegido no es el de la intención real.
+                    d["act_errors"] += int(group_of(pset[0]) != group_of(y))
                 d["set_size_sum"] += len(pset)
         out = {}
         for key, d in per.items():

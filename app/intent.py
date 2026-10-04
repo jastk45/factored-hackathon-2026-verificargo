@@ -96,10 +96,14 @@ class IntentClassifier:
                 route, reason = "ABSTAIN", "fuera del alcance del servicio"
             else:
                 route, reason = "ACT", f"un solo flujo posible: {group}"
-        elif len(groups) <= self.max_clarify:
-            route, reason = "CLARIFY", f"varios flujos posibles: {', '.join(groups)}"
         else:
-            route, reason = "ESCALATE", f"demasiada ambigüedad: {len(groups)} flujos"
+            # Varios flujos posibles: se pregunta, no se escala. Preguntar es
+            # seguro y barato; transferir a un humano por no entender el tema
+            # es caro. Decidido tras el ensayo con datos parciales: con la
+            # regla anterior (escalar si había más de 3 grupos) se escalaba
+            # casi todo en el primer turno. El conjunto -y por lo tanto la
+            # garantía de cobertura- no cambia; solo qué se hace con él.
+            route, reason = "CLARIFY", f"varios flujos posibles: {', '.join(groups)}"
 
         # Dentro del grupo elegido, la intención concreta es la más probable de
         # las que están en el conjunto.

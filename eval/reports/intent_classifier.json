@@ -1,0 +1,249 @@
+{
+  "experiment": "E-05",
+  "run_at": "2026-10-03T22:47:06",
+  "git_commit": "1016202",
+  "encoder": "intfloat/multilingual-e5-small",
+  "data": {
+    "train_en": 4378,
+    "train_translated": 480,
+    "test": 128,
+    "hash_train_en": "bbc882f2014f",
+    "hash_train_translated": "7a812731ebfb",
+    "hash_test": "384a34581ffe"
+  },
+  "arms": {
+    "A_tfidf": {
+      "macro_f1": 0.5501,
+      "accuracy": 0.5703,
+      "n": 128,
+      "macro_f1_es": 0.5629,
+      "n_es": 64,
+      "macro_f1_pt": 0.531,
+      "n_pt": 64,
+      "oos_recall": 1.0,
+      "ece": 0.1465
+    },
+    "B_e5_en_only": {
+      "macro_f1": 0.6316,
+      "accuracy": 0.6406,
+      "n": 128,
+      "macro_f1_es": 0.6031,
+      "n_es": 64,
+      "macro_f1_pt": 0.6619,
+      "n_pt": 64,
+      "oos_recall": 1.0,
+      "ece": 0.1122
+    },
+    "C_e5_translate_train": {
+      "macro_f1": 0.6811,
+      "accuracy": 0.6953,
+      "n": 128,
+      "macro_f1_es": 0.6218,
+      "n_es": 64,
+      "macro_f1_pt": 0.7417,
+      "n_pt": 64,
+      "oos_recall": 1.0,
+      "ece": 0.1323
+    }
+  },
+  "acceptance": {
+    "gain_macro_f1": 0.131,
+    "worst_language_gap": 0.0589,
+    "accepted": true,
+    "deployed": "C_e5_translate_train"
+  },
+  "conformal": {
+    "fixed": {
+      "es": {
+        "n": 32,
+        "coverage": 0.312,
+        "act": 9,
+        "clarify": 0,
+        "abstain": 2,
+        "escalate": 21,
+        "act_error_rate": 0.111,
+        "avg_set_size": 0.34
+      },
+      "all": {
+        "n": 64,
+        "coverage": 0.359,
+        "act": 22,
+        "clarify": 0,
+        "abstain": 4,
+        "escalate": 38,
+        "act_error_rate": 0.136,
+        "avg_set_size": 0.41
+      },
+      "pt": {
+        "n": 32,
+        "coverage": 0.406,
+        "act": 13,
+        "clarify": 0,
+        "abstain": 2,
+        "escalate": 17,
+        "act_error_rate": 0.154,
+        "avg_set_size": 0.47
+      }
+    },
+    "conformal_global": {
+      "es": {
+        "n": 32,
+        "coverage": 0.875,
+        "act": 9,
+        "clarify": 22,
+        "abstain": 1,
+        "escalate": 0,
+        "act_error_rate": 0.111,
+        "avg_set_size": 3.75
+      },
+      "all": {
+        "n": 64,
+        "coverage": 0.922,
+        "act": 18,
+        "clarify": 44,
+        "abstain": 2,
+        "escalate": 0,
+        "act_error_rate": 0.111,
+        "avg_set_size": 3.64
+      },
+      "pt": {
+        "n": 32,
+        "coverage": 0.969,
+        "act": 9,
+        "clarify": 22,
+        "abstain": 1,
+        "escalate": 0,
+        "act_error_rate": 0.111,
+        "avg_set_size": 3.53
+      }
+    },
+    "conformal_mondrian": {
+      "es": {
+        "n": 32,
+        "coverage": 0.938,
+        "act": 7,
+        "clarify": 25,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.143,
+        "avg_set_size": 5.0
+      },
+      "all": {
+        "n": 64,
+        "coverage": 0.953,
+        "act": 11,
+        "clarify": 53,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.091,
+        "avg_set_size": 5.06
+      },
+      "pt": {
+        "n": 32,
+        "coverage": 0.969,
+        "act": 4,
+        "clarify": 28,
+        "abstain": 0,
+        "escalate": 0,
+        "act_error_rate": 0.0,
+        "avg_set_size": 5.12
+      }
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "unrecognized_charge",
+      "duplicate_charge",
+      "wrong_amount",
+      "merchandise_not_received",
+      "card_lost_stolen",
+      "dispute_status",
+      "policy_question",
+      "out_of_scope"
+    ],
+    "matrix": [
+      [
+        10,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        2
+      ],
+      [
+        0,
+        16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        1,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        12,
+        1,
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        15,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6,
+        1,
+        5,
+        0,
+        4
+      ],
+      [
+        1,
+        0,
+        0,
+        5,
+        0,
+        2,
+        6,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        16
+      ]
+    ]
+  },
+  "encode_ms_per_message": 1.76,
+  "seconds": 23.6
+}

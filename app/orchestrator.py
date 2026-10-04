@@ -269,6 +269,34 @@ class Orchestrator:
         confirmed: bool = False,
         context: dict[str, Any] | None = None,
     ) -> Turn:
+        """Atiende un turno. Ninguna excepción inesperada sale de acá.
+
+        Si algo falla fuera de lo previsto (una herramienta que se cae, un
+        timeout de la base), el turno termina en ESCALATE con el error
+        registrado: el fallback seguro es pasar a un humano, nunca inventar.
+        """
+        try:
+            return self._handle(token, message, toolbox_factory,
+                                clarification_turns, confirmed, context)
+        except Exception as exc:  # noqa: BLE001 - es el fallback de último recurso
+            turn = Turn(outcome=Outcome.ESCALATED, message=message,
+                        language=detect_language(message))
+            turn.states.append(State.ESCALATE)
+            turn.escalation_reasons.append(
+                f"SYSTEM: error inesperado ({type(exc).__name__}: {exc})"[:200])
+            turn.error = f"{type(exc).__name__}: {exc}"
+            self._say(turn, "escalated_no_ticket")
+            return turn
+
+    def _handle(
+        self,
+        token: str,
+        message: str,
+        toolbox_factory,
+        clarification_turns: int = 0,
+        confirmed: bool = False,
+        context: dict[str, Any] | None = None,
+    ) -> Turn:
         started = time.perf_counter()
         turn = Turn(outcome=Outcome.BLOCKED, message=message)
         context = dict(context or {})
@@ -339,6 +367,11 @@ class Orchestrator:
         elif self.classifier is not None:
             decision = self.classifier.decide(message, turn.language)
             turn.intent_decision = decision.as_dict()
+            if decision.route == "CLARIFY" and clarification_turns >= self.max_clarifications:
+                turn.escalation_reasons.append("ESC-06: la intención sigue sin aclararse")
+                self._escalate(turn, box, {"reason": "intent_unclear",
+                                           "prediction_set": list(decision.prediction_set)})
+                return finish(Outcome.ESCALATED)
             if decision.route == "CLARIFY":
                 turn.states.append(State.CLARIFY)
                 options = " / ".join(GROUP_LABEL[g][turn.language] for g in decision.groups)
