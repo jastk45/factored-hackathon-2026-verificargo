@@ -91,6 +91,13 @@ def make_token(case: dict) -> str:
 
 # --- usuario simulado ----------------------------------------------------
 
+TRUE_GROUP = {
+    "B01_dispute": "dispute", "B02_out_of_scope": "out_of_scope",
+    "B03_card_lost": "card", "B04_policy": "policy", "B05_status": "status",
+    "B07_injection_in_claim": "dispute", "B08_foreign_data": "dispute",
+    "B10_low_auth": "dispute", "B11_faults": "dispute", "B12_missing_rate": "dispute",
+}
+
 def fmt_amount(value: float, lang: str) -> str:
     whole, _, cents = f"{value:,.2f}".partition(".")
     return f"{whole.replace(',', '.')},{cents}"
@@ -112,6 +119,12 @@ def user_reply(case: dict, turn: Turn) -> str | None:
         return (f"Foi em {facts['transaction_date']} no {facts['merchant_name']}, "
                 f"de {amount} {facts['currency']}.")
     if awaiting == "intent":
+        # v2: la interfaz ofrece los flujos posibles como botones y el cliente
+        # elige el suyo. El usuario simulado hace lo mismo con el flujo real del
+        # caso. (v1 reformulaba con texto libre, que se re-clasificaba.)
+        group = TRUE_GROUP.get(case["block"], "dispute")
+        if group in turn.context_out.get("options", []):
+            return f"choice:{group}"
         return case.get("restate") or ("Es otro tema." if lang == "es" else "É outro assunto.")
     return None
 

@@ -117,6 +117,15 @@ ES_WORDS = {
     "cuenta", "compré", "pagué", "reclamo", "disputa", "devuelvan", "qué",
 }
 
+# Tarjeta perdida, robada o comprometida: una regla dura, no el clasificador.
+# Las reglas solo pueden AÑADIR escalamientos; el modelo no puede evitarlos.
+CARD_RISK = re.compile(
+    r"\b(rob(aron|ó|o)\b|roub(aram|ou)\b|asalt(aron|o)|assalt(aram|ado|ada)|"
+    r"perd[ií](d[oa])?\b.{0,25}(tarjeta|cart[aã]o)|(tarjeta|cart[aã]o).{0,25}perd|"
+    r"clon(aron|ada|ado)|clonaram|hurt(aron|o)|furt(aram|o)|extravi)",
+    re.IGNORECASE,
+)
+
 AFFIRMATIVE = re.compile(
     r"^\s*(s[ií]|sim|confirmo|dale|ok|okay|de acuerdo|claro|correcto|"
     r"pode ser|pode|isso|exato|adelante|hazlo|fa[cç]a)\b", re.IGNORECASE,
@@ -205,6 +214,12 @@ GROUP_LABEL = {
     "out_of_scope": {"es": "otro tema", "pt": "outro assunto"},
 }
 
+GROUP_DEFAULT = {
+    "dispute": "unrecognized_charge", "card": "card_lost_stolen",
+    "status": "dispute_status", "policy": "policy_question",
+    "out_of_scope": "out_of_scope",
+}
+
 INTENT_GROUP = {
     "unrecognized_charge": "dispute", "duplicate_charge": "dispute",
     "wrong_amount": "dispute", "merchandise_not_received": "dispute",
@@ -213,8 +228,14 @@ INTENT_GROUP = {
 }
 
 
+GROUP_OF = None  # se completa abajo
+
+
 def money(value: float) -> str:
     return f"{value:,.2f}"
+
+
+GROUP_OF = INTENT_GROUP
 
 
 class Orchestrator:
@@ -240,6 +261,24 @@ class Orchestrator:
     def _guard(self, message: str) -> str | None:
         verdict = detect_injection(message)
         return verdict.reason if verdict.suspicious else None
+
+    @staticmethod
+    def _chosen_group(message: str, context: dict[str, Any]) -> str | None:
+        """¿El mensaje elige una de las opciones ofrecidas?
+
+        Acepta "choice:dispute" (lo que manda un botón) o el texto de la
+        etiqueta en cualquiera de los dos idiomas.
+        """
+        options = context.get("options") or []
+        text = message.strip().lower()
+        if text.startswith("choice:"):
+            key = text.split(":", 1)[1].strip()
+            return key if key in options else None
+        for group in options:
+            labels = [GROUP_LABEL[group]["es"].lower(), GROUP_LABEL[group]["pt"].lower()]
+            if any(text == label or text in label and len(text) > 8 for label in labels):
+                return group
+        return None
 
     def _say(self, turn: Turn, key: str, **params: Any) -> None:
         turn.reply = T[key][turn.language].format(**params)
@@ -362,8 +401,17 @@ class Orchestrator:
 
         # Intención: si estábamos en medio de un flujo, el mensaje es una
         # continuación y no se re-clasifica.
-        if awaiting in ("details", "confirmation") and context.get("intent"):
+        choice = self._chosen_group(message, context) if awaiting == "intent" else None
+        if CARD_RISK.search(message):
+            intent = "card_lost_stolen"
+        elif awaiting in ("details", "confirmation") and context.get("intent"):
             intent = context["intent"]
+        elif choice is not None:
+            # El cliente eligió una de las opciones que se le ofrecieron: la
+            # elección es determinista, no se vuelve a clasificar.
+            intent = context.get("group_intent", {}).get(choice) or GROUP_DEFAULT[choice]
+            extracted = {**context.get("fields", {}),
+                         **{k: v for k, v in extracted.items() if v is not None}}
         elif self.classifier is not None:
             decision = self.classifier.decide(message, turn.language)
             turn.intent_decision = decision.as_dict()
@@ -376,9 +424,11 @@ class Orchestrator:
                 turn.states.append(State.CLARIFY)
                 options = " / ".join(GROUP_LABEL[g][turn.language] for g in decision.groups)
                 self._say(turn, "clarify_intent", options=options)
-                turn.context_out = {"awaiting": "intent", "fields": extracted,
-                                    "language": turn.language,
-                                    "clarification_turns": clarification_turns + 1}
+                turn.context_out = {
+                    "awaiting": "intent", "fields": extracted, "language": turn.language,
+                    "options": list(decision.groups),
+                    "group_intent": {GROUP_OF.get(i): i for i in reversed(decision.prediction_set)},
+                    "clarification_turns": clarification_turns + 1}
                 return finish(Outcome.CLARIFY)
             if decision.route == "ESCALATE":
                 turn.escalation_reasons.append(f"INTENT: {decision.reason}")

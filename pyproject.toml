@@ -7,6 +7,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "boto3>=1.43.103",
     "duckdb>=1.5.5",
+    "fastapi>=0.142.2",
     "pandera>=0.33.1",
     "polars>=1.44.2",
     "pydantic>=2.13.5",
@@ -14,10 +15,12 @@ dependencies = [
     "pyyaml>=6.0.3",
     "sentence-transformers>=6.1.0",
     "streamlit>=1.65.0",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "matplotlib>=3.11.2",
     "pandas>=3.0.6",
     "pytest>=8.0",
