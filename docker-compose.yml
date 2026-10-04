@@ -1,0 +1,27 @@
+# Demo local reproducible.
+#
+#   docker compose up                       # sin modelo: extracción por reglas
+#   docker compose --profile llm up         # con Ollama + qwen3:1.7b
+#
+# Requiere haber corrido el pipeline una vez (make data), que deja el gold en
+# ./warehouse. La imagen no lleva datos.
+services:
+  app:
+    build: .
+    ports: ["8501:8501"]
+    volumes:
+      - ./warehouse:/app/warehouse
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      LLM_BASE_URL: http://ollama:11434
+      LLM_MODEL: qwen3:1.7b
+      SESSION_SECRET: ${SESSION_SECRET:-cambiar-en-cada-despliegue}
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    volumes: [ollama:/root/.ollama]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3 && ollama pull qwen3:1.7b && wait"]
+
+volumes:
+  ollama:
