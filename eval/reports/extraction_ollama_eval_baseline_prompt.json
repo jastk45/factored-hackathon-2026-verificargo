@@ -1,0 +1,41 @@
+{
+  "provider": "ollama",
+  "model": "qwen3:1.7b",
+  "profile": "eval",
+  "n": 80,
+  "by_field": {
+    "json": {
+      "overall": 1.0,
+      "pt": 1.0,
+      "es": 1.0
+    },
+    "intent": {
+      "overall": 0.925,
+      "pt": 0.7,
+      "es": 1.0
+    },
+    "language": {
+      "overall": 0.25,
+      "pt": 1.0,
+      "es": 0.0
+    },
+    "amount": {
+      "overall": 0.45,
+      "pt": 0.75,
+      "es": 0.35
+    },
+    "currency": {
+      "overall": 1.0,
+      "pt": 1.0,
+      "es": 1.0
+    },
+    "merchant": {
+      "overall": 0.5,
+      "pt": 0.35,
+      "es": 0.55
+    }
+  },
+  "complete_extraction": 0.025,
+  "latency_p50": 2.311608449963387,
+  "unparseable": 0
+}

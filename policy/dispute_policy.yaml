@@ -1,0 +1,265 @@
+# Política de disputas de tarjeta — VerifiCargo
+#
+# Este archivo es la autoridad sobre qué puede hacer el sistema. El modelo de
+# lenguaje NO decide elegibilidad ni dispara acciones: propone, y estas reglas
+# resuelven. Cada regla tiene un ID estable que viaja en el log de ejecución y
+# en el paquete de handoff, de modo que toda decisión sea auditable sin leer
+# razonamiento del modelo.
+#
+# Familias:
+#   GATE-xx  elegibilidad: ¿se puede tramitar la disputa?
+#   ESC-xx   escalamiento: ¿tiene que verlo un humano?
+#   ACT-xx   acciones: ¿qué requisitos tiene ejecutar algo?
+#   DATA-xx  calidad de datos: ¿la evidencia es utilizable?
+#
+# PROCEDENCIA DE LOS PARÁMETROS
+#   real       verificable en normativa pública citada
+#   synthetic  inventado por el equipo por falta de fuente verificada
+# Ningún parámetro sintético se presenta como si fuera regulación real.
+
+version: "1.0.0"
+updated: "2026-09-28"
+
+# Todas las comparaciones de monto se hacen en USD normalizado.
+# F-12: los productos de clientes mexicanos están todos en USD mientras
+# Colombia y Argentina usan moneda local; comparar en moneda local daría
+# resultados absurdos entre países.
+money:
+  comparison_currency: USD
+  conversion_source: daily_exchange_rates
+  on_missing_rate: ESCALATE   # nunca se inventa una tasa (F-12: 35 casos)
+
+countries:
+  MX:
+    claim_window_days: 90
+    bank_resolution_days: 45
+    provisional_credit_hours: 48
+    provisional_credit_business_days: 2
+    provenance: real
+    source: >-
+      CONDUSEF. El usuario tiene 90 días naturales para reclamar; el banco
+      tiene 45 días para dictaminar en operaciones nacionales. Para cargos
+      reportados dentro de las 48 horas, debe abonarse a más tardar el segundo
+      día hábil bancario.
+  CO:
+    claim_window_days: 90
+    bank_resolution_days: 15
+    provisional_credit_hours: null
+    provenance: synthetic
+    source: >-
+      PARÁMETRO SINTÉTICO. No se verificó la normativa colombiana. Usado
+      únicamente para demostrar el mecanismo multi-país.
+  AR:
+    claim_window_days: 90
+    bank_resolution_days: 30
+    provisional_credit_hours: null
+    provenance: synthetic
+    source: >-
+      PARÁMETRO SINTÉTICO. No se verificó la normativa argentina. Usado
+      únicamente para demostrar el mecanismo multi-país.
+
+thresholds:
+  # Por encima de este monto la disputa siempre pasa por un humano.
+  #
+  # Calibrado sobre el dataset, no elegido a ojo (F-13). Las compras aprobadas
+  # tienen p50 252 USD, p90 450 y un máximo de 510: un umbral de 1.000 USD
+  # -el valor inicial- no se habría disparado jamás en este flujo. Con 400 USD
+  # escala el 20% de las compras, que es una proporción defendible para
+  # revisión humana.
+  #
+  # En producción el umbral saldría del apetito de riesgo del banco y de un
+  # análisis de costo esperado, no de los percentiles del histórico.
+  escalate_amount_usd: 400.0
+  # A partir de aquí queda tan poco plazo que no se arriesga el trámite
+  # automático.
+  near_deadline_days: 10
+  # Máximo de transacciones candidatas que se le ofrecen al cliente para
+  # desambiguar; más que eso, no es una pregunta razonable.
+  max_candidates_to_offer: 3
+  # Máximo de preguntas de aclaración antes de escalar.
+  max_clarification_turns: 2
+  provenance: synthetic
+  note: >-
+    Umbrales elegidos por el equipo para el prototipo. En producción saldrían
+    del apetito de riesgo del banco y de un análisis de costo esperado.
+
+# --- Elegibilidad ------------------------------------------------------
+gates:
+  - id: GATE-01
+    title: Dentro del plazo de reclamo
+    condition: days_since_transaction <= country.claim_window_days
+    on_fail: ESCALATE
+    message_key: outside_claim_window
+    why: >-
+      Fuera del plazo la vía automática no aplica, pero el caso no se rechaza:
+      un humano evalúa si hay excepción.
+
+  - id: GATE-02
+    title: La transacción pertenece al cliente autenticado
+    condition: transaction.customer_id == session.customer_id
+    on_fail: DENY
+    message_key: not_your_transaction
+    why: >-
+      Aislamiento por cliente. Es la regla que F-07 vuelve imprescindible: en
+      el dataset el 100% de affected_product_id apunta a otro cliente, así que
+      un join ingenuo filtraría datos ajenos en todos los casos.
+
+  - id: GATE-03
+    title: La transacción está en un estado disputable
+    condition: transaction.status in ["Approved", "Pending"]
+    on_fail: DENY
+    message_key: not_disputable_status
+    why: >-
+      Una transacción rechazada o revertida no genera cargo: no hay nada que
+      disputar y explicarlo resuelve el caso.
+
+  - id: GATE-04
+    title: La transacción está identificada de forma única
+    condition: candidate_count == 1
+    on_fail: CLARIFY
+    message_key: ambiguous_transaction
+    why: >-
+      Con varias candidatas, actuar sería adivinar. Se pregunta ofreciendo
+      hasta max_candidates_to_offer opciones.
+
+  - id: GATE-05
+    title: No existe ya una disputa abierta sobre esta transacción
+    condition: existing_open_dispute == false
+    on_fail: DENY
+    message_key: duplicate_dispute
+    why: >-
+      Duplicar el caso rompe el seguimiento. Se informa el número existente.
+
+# --- Escalamiento ------------------------------------------------------
+# Las reglas de escalamiento solo pueden AÑADIR un handoff, nunca quitarlo.
+# Si un modelo dijera "no hace falta escalar", no tiene efecto.
+escalations:
+  - id: ESC-01
+    title: Monto sobre el umbral
+    condition: transaction.amount_usd >= thresholds.escalate_amount_usd
+    why: Un monto alto justifica revisión humana antes de comprometer al banco.
+
+  - id: ESC-02
+    title: Cerca del vencimiento del plazo
+    condition: >-
+      country.claim_window_days - days_since_transaction
+      <= thresholds.near_deadline_days
+    why: >-
+      Con poco margen, un error del trámite automático dejaría al cliente sin
+      remedio.
+
+  - id: ESC-03
+    title: Fraude declarado o tarjeta comprometida
+    condition: intent in ["card_lost_stolen"] or customer_claims_fraud == true
+    why: >-
+      Implica bloqueo, posible reposición y un patrón que puede afectar otras
+      transacciones.
+
+  - id: ESC-04
+    title: Varios cargos no reconocidos del mismo cliente
+    condition: unrecognized_charges_last_30d >= 3
+    why: Un patrón sugiere tarjeta comprometida, no un cargo aislado.
+
+  - id: ESC-05
+    title: Evidencia incompleta
+    condition: transaction.amount_usd_source == "unavailable"
+    why: >-
+      Sin monto normalizado no se puede comparar contra el umbral. F-12
+      documenta 35 transacciones sin tasa de cambio disponible.
+
+  - id: ESC-06
+    title: Se agotaron las aclaraciones
+    condition: clarification_turns > thresholds.max_clarification_turns
+    why: Insistir degrada la experiencia; un humano desbloquea más rápido.
+
+  - id: ESC-07
+    title: Cliente vulnerable o en situación sensible
+    condition: customer.requires_assisted_channel == true
+    why: >-
+      Hay perfiles a los que el banco atiende siempre con persona. El flag
+      viene del sistema, nunca de lo que el cliente escriba.
+
+# --- Acciones ----------------------------------------------------------
+actions:
+  - id: ACT-01
+    name: create_dispute_case
+    requires_confirmation: true
+    requires_auth_level: high
+    verify_after: true
+    reversible: true
+    why: >-
+      Abre un caso formal con plazos regulatorios. Se confirma con el cliente
+      y se relee para comprobar que existe antes de informarlo.
+
+  - id: ACT-02
+    name: block_card
+    requires_confirmation: true
+    requires_auth_level: high
+    verify_after: true
+    reversible: false
+    why: >-
+      Deja al cliente sin medio de pago. Es irreversible en la práctica, así
+      que exige confirmación explícita y verificación posterior.
+
+  - id: ACT-03
+    name: list_recent_transactions
+    requires_confirmation: false
+    requires_auth_level: low
+    verify_after: false
+    reversible: true
+    why: Solo lectura sobre datos del propio cliente.
+
+  - id: ACT-04
+    name: create_handoff_ticket
+    requires_confirmation: false
+    requires_auth_level: low
+    verify_after: true
+    reversible: true
+    why: >-
+      Escalar nunca requiere permiso del cliente. Se verifica que el ticket
+      quedó en la cola antes de decir que alguien lo atenderá.
+
+# --- Calidad de datos --------------------------------------------------
+data_rules:
+  - id: DATA-01
+    title: Ningún argumento sensible proviene del texto del cliente
+    rule: >-
+      Los argumentos de ACT-01 y ACT-02 solo pueden tener procedencia
+      'verified_tool' o 'system'. Nunca 'customer_text'.
+    why: >-
+      Defensa arquitectónica contra prompt injection: aunque el modelo se deje
+      convencer, el monto y el identificador salen de la base de datos.
+
+  - id: DATA-02
+    title: No se expone affected_product_id de una queja
+    rule: El campo no viaja al contexto del modelo ni a la respuesta.
+    why: >-
+      F-07: el 100% apunta a un producto de otro cliente. Exponerlo sería una
+      filtración de datos entre clientes.
+
+  - id: DATA-03
+    title: Toda cifra de la respuesta existe en la evidencia
+    rule: >-
+      Antes de enviar, se comprueba que cada monto y fecha mencionados
+      aparecen en algún registro de evidencia verificada.
+    why: Anti-alucinación determinista, sin depender del modelo.
+
+# --- Mensajes ----------------------------------------------------------
+# El modelo redacta con naturalidad, pero el hecho que comunica está fijado
+# aquí. Estas claves son el contrato con la capa de redacción.
+messages:
+  outside_claim_window:
+    es: El cargo tiene más de {days} días; lo revisa un especialista.
+    pt: A cobrança tem mais de {days} dias; um especialista vai revisar.
+  not_your_transaction:
+    es: No encuentro esa transacción en tus productos.
+    pt: Não encontro essa transação nos teus produtos.
+  not_disputable_status:
+    es: Esa operación fue {status}, así que no generó cargo.
+    pt: Essa operação foi {status}, portanto não gerou cobrança.
+  ambiguous_transaction:
+    es: Encontré {count} cargos que coinciden. ¿Cuál es?
+    pt: Encontrei {count} cobranças que coincidem. Qual delas?
+  duplicate_dispute:
+    es: Ya existe la disputa {case_id} sobre ese cargo.
+    pt: Já existe a disputa {case_id} sobre essa cobrança.

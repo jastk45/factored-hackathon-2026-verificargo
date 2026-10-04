@@ -1,0 +1,26 @@
+[project]
+name = "verificargo"
+version = "0.1.0"
+description = "AI-first card dispute intake for a LATAM bank — Factored AI & Data Hackathon 2026"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "boto3>=1.43.103",
+    "duckdb>=1.5.5",
+    "pandera>=0.33.1",
+    "polars>=1.44.2",
+    "pydantic>=2.13.5",
+    "python-dotenv>=1.2.3",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.2",
+    "pandas>=3.0.6",
+    "pytest>=8.0",
+    "scikit-learn>=1.9.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

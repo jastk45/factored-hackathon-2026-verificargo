@@ -1,0 +1,40 @@
+# === SECRETOS — nunca commitear ===
+.env
+.env.*
+!.env.example
+*.pem
+credentials
+.aws/
+# La captura del Data Dictionary muestra el Access Key y el Secret en claro.
+"base y standares/image (6).png"
+base y standares/image*.png
+
+# === DATOS — no versionar 19M filas ===
+data/
+*.duckdb
+*.duckdb.wal
+warehouse/
+
+# === Python / uv ===
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# === ML ===
+mlruns/
+models/*.bin
+models/*.safetensors
+
+# === Sistema ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === MATERIAL DE REFERENCIA — no se redistribuye ===
+# PDFs del organizador, transcripción del kickoff y notas de investigación
+# privadas. Se citan en docs/, pero no se publican.
+base y standares/

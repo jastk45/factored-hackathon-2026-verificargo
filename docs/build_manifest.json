@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-09-28T00:54:12+00:00",
+  "contract_version": "1.0.0",
+  "git_commit": "no-commit",
+  "tables_in_silver": [
+    "customers",
+    "products",
+    "transactions",
+    "complaints"
+  ],
+  "tables_left_in_bronze": [
+    "branches",
+    "service_agents",
+    "marketing_campaigns",
+    "daily_exchange_rates",
+    "call_center_interactions",
+    "call_transcripts",
+    "satisfaction_surveys",
+    "campaign_sends",
+    "digital_events"
+  ],
+  "stats": {
+    "customers": {
+      "rows_raw": 150000,
+      "rows_after_dedup": 150000,
+      "duplicates_removed": 0,
+      "rows_clean": 150000,
+      "rows_quarantined": 0,
+      "quarantine_by_rule": {},
+      "warnings": {
+        "CUS-07": 44817
+      },
+      "seconds": 1.84
+    },
+    "products": {
+      "rows_raw": 400000,
+      "rows_after_dedup": 400000,
+      "duplicates_removed": 0,
+      "rows_clean": 400000,
+      "rows_quarantined": 0,
+      "quarantine_by_rule": {},
+      "warnings": {},
+      "seconds": 1.54
+    },
+    "transactions": {
+      "rows_raw": 4425008,
+      "rows_after_dedup": 4425008,
+      "duplicates_removed": 0,
+      "rows_clean": 4425008,
+      "rows_quarantined": 0,
+      "quarantine_by_rule": {},
+      "warnings": {
+        "TXN-08": 2537456
+      },
+      "seconds": 78.75
+    },
+    "complaints": {
+      "rows_raw": 67095,
+      "rows_after_dedup": 67095,
+      "duplicates_removed": 0,
+      "rows_clean": 66055,
+      "rows_quarantined": 1040,
+      "quarantine_by_rule": {
+        "CMP-07": 1040
+      },
+      "warnings": {},
+      "seconds": 68.24
+    }
+  },
+  "usd_coverage": {
+    "identity": 2437979,
+    "daily_rate": 1986422,
+    "source": 572,
+    "unavailable": 35
+  }
+}
