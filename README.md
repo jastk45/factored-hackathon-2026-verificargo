@@ -17,13 +17,14 @@ guion. Mismo modelo (qwen3:1.7b, local) para los dos.
 
 | | Baseline: el LLM decide con la política en el prompt | **VerifiCargo** |
 |---|---:|---:|
-| **Resultados inseguros** | **27% (41/152)** | **0% (0/152)** |
+| **Resultados inseguros** (acciones, escalamientos y afirmaciones falsas) | **34,9% (53/152)** | **0% (0/152)** |
+| Afirmaciones falsas al cliente | 9,2% (14/152) | 0% (0/152) |
 | **Escalamientos omitidos** (sin ticket verificado) | **39,2% (20/51)** | **0% (0/51)** |
-| Resolución segura · casos resolubles | 16,7% (10/60) | **75% (45/60)** |
-| Resolución segura · todos los casos en alcance | 7% (10/142) | **31,7% (45/142)** |
-| Resoluciones con respuesta incorrecta | 12,7% (7/55) | 0% (0/45) |
-| Escalamientos innecesarios | 49,5% (45/91) | 20,9% (19/91) |
-| Resultado aceptable (y no inseguro) | 61,2% (93/152) | 90,1% (137/152) |
+| Resolución segura · casos resolubles | 10% (6/60) | **75% (45/60)** |
+| Resolución segura · todos los casos en alcance | 4,2% (6/142) | **31,7% (45/142)** |
+| Resoluciones incompletas | 12,5% (7/56) | 0% (0/45) |
+| Escalamientos innecesarios | 47,3% (43/91) | 20,9% (19/91) |
+| Resultado aceptable (y no inseguro) | 55,9% (85/152) | 90,1% (137/152) |
 | Fallas inyectadas que se activaron | 80% (8/10) | 100% (10/10) |
 | Latencia por turno p50 / p95 | 2,7 s / 2,9 s | 2,2 s / 2,3 s |
 
@@ -31,11 +32,12 @@ Medición offline sobre casos escritos por el equipo: **no es una mejora medida
 en producción**. "En alcance" excluye las preguntas fuera de alcance; incluye
 los casos que deben escalar, que por definición no se resuelven solos.
 
-**Antes había otra tabla, y no era válida.** Una auditoría externa (4 de
-octubre) encontró que el evaluador anterior contaba como logros cosas que no
-comprobaba, y que el baseline corría con condiciones distintas. El 82,4% de
-resolución segura que se publicó salía de ahí. Qué estaba mal, qué se corrigió
-y cómo se volvió a medir: [Evaluación](#evaluación).
+**Antes había otra tabla, y no era válida.** Tres revisiones externas (4 y 5
+de octubre) encontraron que el evaluador contaba como logros cosas que no
+comprobaba —fallas que no se activaban, escalamientos sin ticket, respuestas
+falsas que contaban como seguras— y que el baseline corría con condiciones
+distintas. El 82,4% de resolución segura que se publicó salía de ahí. Qué
+estaba mal, qué se corrigió y cómo se volvió a medir: [Evaluación](#evaluación).
 
 ---
 
@@ -161,8 +163,11 @@ que motivó D-10, confirmada.
 
 1. Se corrigió el evaluador, con tests propios que reproducen cada engaño
    ([tests/test_evaluator.py](tests/test_evaluator.py)). Además verifica
-   ACT-01 desde la conversación: una disputa solo está autorizada si se crea
-   en el turno que responde a un "sí" del cliente.
+   ACT-01 desde la conversación (una disputa solo está autorizada si se crea
+   en el turno que responde a un "sí") y separa lo **incompleto** de lo
+   **falso**: una respuesta que contradice los datos —plazos invertidos o de
+   otro país, un estado inventado, una disputa o un traspaso que no ocurrió,
+   un monto que no existe— cuenta como resultado inseguro (D-20).
 2. Se corrigieron las condiciones del baseline: política completa del YAML,
    fecha de referencia, reclamos del cliente, y decide él mismo si el cliente
    confirmó.
@@ -175,6 +180,12 @@ que motivó D-10, confirmada.
    transacciones identificables, y el evaluador comprueba que se activaron.
 5. Se commiteó con su hash y el tag `eval-v2` **antes** de correr nada sobre
    él. Recién entonces se corrieron los dos sistemas.
+6. Una tercera revisión encontró que un "sí" con datos nuevos todavía
+   confirmaba y que el evaluador no detectaba respuestas falsas. Se corrigieron
+   las dos cosas y se volvieron a correr los cuatro reportes (**v6**). El
+   arreglo del sistema no viene de mirar eval-v2 (no tiene casos de ese tipo),
+   pero eval-v2 ya había sido visto: es held-out respecto de los ajustes de
+   v1-v4, no de este último.
 
 **Resultado sobre eval-v2** (la tabla de arriba). Por bloque, VerifiCargo:
 
@@ -184,18 +195,18 @@ que motivó D-10, confirmada.
   inequívoco; la tarjeta robada a mitad de la confirmación escala con ticket.
 - **Punto débil**: preguntas de plazos (3/12) y de estado
   de reclamos (2/8). El clasificador no las reconoce y el
-  sistema escala: es seguro, pero es trabajo que podría resolverse solo. **Ahí
-  el baseline es mejor** en plazos (8/12): redactar una
-  respuesta de política es algo que un LLM hace bien.
+  sistema escala: es seguro, pero es trabajo que podría resolverse solo. **En plazos el
+  baseline resuelve uno más** (4/12), pero 5 de sus 12 respuestas dan plazos
+  falsos para el país del cliente; VerifiCargo no da ninguno.
 - **El baseline** nunca pasa del primer turno: crea la disputa de entrada
-  declarando que el cliente confirmó (39 disputas sin que el cliente confirmara, 21 acciones que el caso no permitía, 20 escalamientos omitidos y 2 disputas sobre otra transacción; un caso puede tener varios).
+  declarando que el cliente confirmó (40 acciones sin que el cliente confirmara, 21 acciones que el caso no permitía, 20 escalamientos omitidos, 14 conversaciones con afirmaciones falsas y 3 disputas sobre otra transacción; un caso puede tener varios).
 - Español 71% (22/31) y portugués 79,3% (23/29) de resolución segura
   sobre los casos resolubles.
 
 **Sobre eval-v1**, el set usado durante el desarrollo, con el mismo evaluador
 corregido: VerifiCargo 0% (0/159) inseguros y
 85,1% (63/74) de resolución segura; baseline
-25,8% (41/159) y 4,1% (3/74). No es held-out: el
+30,8% (49/159) y 4,1% (3/74). No es held-out: el
 sistema se ajustó mirándolo.
 
 **La historia de v1 a v4** —un resultado inseguro real, un diagnóstico
@@ -205,9 +216,9 @@ prompt; ahora toda cifra extraída tiene que estar en el mensaje)— sigue en
 evaluador v1 y **no se presentan como validadas**; los reportes están en
 [eval/reports/evaluador_v1/](eval/reports/evaluador_v1/).
 
-### Revisión de seguridad y de flujo (4 de octubre)
+### Revisiones de seguridad y de flujo (4 y 5 de octubre)
 
-La misma auditoría encontró siete problemas en el sistema. Los siete se
+Las revisiones encontraron estos problemas en el sistema. Todos se
 reprodujeron antes de arreglarlos y tienen un test de regresión
 ([tests/test_review_fixes.py](tests/test_review_fixes.py)):
 
@@ -220,6 +231,8 @@ reprodujeron antes de arreglarlos y tienen un test de regresión
 | Aprobar no ejecutaba nada; pedir información figuraba como resuelto | Aprobar abre y relee la disputa; pedir información deja el caso abierto |
 | País de la sesión fijo en "MX" | Sale del registro del cliente |
 | Una disputa repetida rompía con `KeyError` | GATE-05 informa la disputa existente |
+| "Sí, corrige el monto a 500 USD" abría la disputa sobre el cargo anterior | Un "sí" vale solo si todas sus palabras son de confirmación; lo demás es corrección (D-19) |
+| "Pedir información" no le llegaba al cliente | La pregunta aparece en su chat y la respuesta vuelve al caso, sin verificar (D-21) |
 | Una sola conexión de DuckDB para todos los hilos: con 32 requests simultáneos fallaban 183 de 200 y algunos recibían datos de la consulta de otro | Un cursor por request y locks en disputas, cola y conversación ([tests/test_concurrency.py](tests/test_concurrency.py)) |
 
 Metodología, curvas y anomalías: [docs/experiments.md](docs/experiments.md).
@@ -249,7 +262,7 @@ docker compose up --build                   # sin modelo
 docker compose --profile llm up --build     # con Ollama + qwen3:1.7b
 ```
 
-Otros comandos: `make test` (298 tests), `make train` (clasificador),
+Otros comandos: `make test` (315 tests), `make train` (clasificador),
 `make eval` (sistema contra baseline; requiere Ollama). Para una corrida
 puntual: `uv run python eval/runner.py --system proposed --cases v2 --tag v5`.
 
@@ -282,7 +295,7 @@ ml/           clasificador de intención y corpus traducido
 policy/       dispute_policy.yaml — reglas con ID y procedencia
 eval/         eval sets congelados (v1, v2), runner, reportes
 docs/         DECISIONS · EDA_FINDINGS · experiments · limitations · intent_catalog
-tests/        298 tests, incluidos los del evaluador y de concurrencia
+tests/        315 tests, incluidos los del evaluador y de concurrencia
 ```
 
 Decisiones de diseño y su porqué: [docs/DECISIONS.md](docs/DECISIONS.md).

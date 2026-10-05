@@ -109,8 +109,10 @@ ruta del frontend, una confirmación que aceptaba "Sí, pero no abras la disputa
 todavía", escalamientos sin ticket, la cola humana sin control de acceso,
 aprobar sin ejecutar, el país fijo en "MX" y un KeyError con disputas repetidas.
 Los siete se reprodujeron, se corrigieron y tienen un test de regresión
-(`tests/test_review_fixes.py`). Que una revisión los encontrara indica que
-puede haber otros del mismo tipo.
+(`tests/test_review_fixes.py`). Una tercera revisión encontró que un "sí" con
+datos nuevos ("Sí, corrige el monto a 500 USD") todavía confirmaba (D-19) y
+que "pedir información" no le llegaba al cliente (D-21). Que tres revisiones
+encontraran problemas indica que puede haber otros del mismo tipo.
 
 ## 6. Evaluación
 
@@ -133,10 +135,12 @@ reservas o cambia a una tarjeta robada en plena confirmación, pero lo hace con
 frases fijas. Un cliente real se equivoca de cifra, abandona o mezcla temas de
 formas que el guion no cubre.
 
-**La corrección de una respuesta se juzga con reglas**, no con un juez humano:
-los plazos del país, los reclamos reales del cliente y ninguna afirmación de
-reembolso. Detecta respuestas inventadas de ese tipo, no una respuesta
-confusa o en mal tono.
+**La veracidad de una respuesta se juzga con reglas**, no con un juez humano
+(D-20): plazos asociados al concepto y país correctos, estados reales de los
+reclamos, montos que existen, acciones y traspasos que ocurrieron, ninguna
+promesa de reembolso. Detecta falsedades de esos tipos, no cualquier
+paráfrasis engañosa ni una respuesta confusa o en mal tono. Tres revisiones
+externas encontraron huecos en el evaluador; puede haber otros.
 
 **Una sola corrida por sistema**, sin intervalos de confianza ni pass^k. La
 variabilidad entre corridas del LLM (temperatura 0, pero no determinista entre

@@ -99,8 +99,16 @@ export interface QueueItem {
   agent?: string
   agent_note?: string
   can_approve: boolean
+  info_request?: { question: string; asked_at: string }
+  customer_replies?: { at: string; question: string; text: string }[]
   result?: { action: string; case_id?: string; existing_case_id?: string; verified: boolean; evidence_ids: string[] }
   package: HandoffPackage
+}
+
+export interface AgentQuestion {
+  handoff_id: string
+  question: string
+  asked_at: string
 }
 
 export type Scorecard = Record<string, unknown>
@@ -149,6 +157,13 @@ export const api = {
       body: JSON.stringify({ otp }),
     }),
   transactions: (cid: string) => call<Txn[]>(`/api/conversations/${cid}/transactions`),
+  questions: (cid: string) =>
+    call<AgentQuestion[]>(`/api/conversations/${cid}/questions`),
+  replyToAgent: (cid: string, handoffId: string, message: string) =>
+    call<{ ok: boolean; status: string }>(`/api/conversations/${cid}/handoffs/${handoffId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
   agentLogin: (access_code: string) =>
     call<{ token: string }>("/api/agent/login", { method: "POST", body: JSON.stringify({ access_code }) }),
   handoffs: (token: string, status: QueueStatus) =>

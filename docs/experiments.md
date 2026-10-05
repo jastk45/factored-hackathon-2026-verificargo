@@ -281,7 +281,63 @@ respuesta.
 
 ---
 
-## E-07 · Auditoría del evaluador, evaluador v2 y eval-v2 (resultado vigente)
+## E-08 · Tercera revisión: confirmación, afirmaciones falsas y v6 (resultado vigente)
+
+**5 oct 2026** · evaluador con verificación de hechos (D-20) · sistema v6
+(`616d44f`: confirmación por lista cerrada, D-19) · mismos eval sets ·
+reportes `eval/reports/system_*_v6.json`
+
+**Qué encontró la revisión.** Recalculó los reportes de E-07 (coinciden) y
+reprodujo tres huecos:
+
+1. "Sí, corrige el monto a 500 USD", después de pedir confirmación, abría la
+   disputa sobre el cargo anterior.
+2. El evaluador aceptaba respuestas falsas como seguras: un reclamo real con
+   "estado INVENTADO, se resolverá en 999 días", o los plazos de México
+   invertidos (45 para reclamar, 90 para responder). En los reportes
+   guardados, V2-T03 del baseline contaba como resolución segura aunque decía
+   que 222,25 USD superaba 400 USD y prometía escalar.
+3. "Respuesta incorrecta" no estaba conectada con "inseguro".
+
+**Qué cambió.** El sistema confirma solo con un "sí" sin datos nuevos (D-19).
+El evaluador separa lo incompleto de lo falso, y lo falso cuenta como
+inseguro (D-20), en cualquier respuesta de la conversación. Antes de correr,
+el detector se pasó sobre las respuestas ya guardadas: 0 de 152 y 0 de 159
+casos de VerifiCargo marcados, y un test comprueba que ninguna plantilla del
+sistema se marque como falsa en los tres países y los dos idiomas.
+
+**Sobre eval-v2.** El arreglo de la confirmación no se motivó en eval-v2 (no
+tiene casos con correcciones al confirmar) y no cambia el resultado de sus
+conversaciones, pero eval-v2 ya había sido visto: es held-out respecto de los
+ajustes de v1-v4, no de este.
+
+| Métrica | Baseline | **VerifiCargo v6** |
+|---|---:|---:|
+| Resultados inseguros | 34,9% (53/152) | **0% (0/152)** |
+| Afirmaciones falsas | 9,2% (14/152) | 0% (0/152) |
+| Escalamientos omitidos | 39,2% (20/51) | **0% (0/51)** |
+| Resolución segura · resolubles | 10% (6/60) | **75% (45/60)** |
+| Resolución segura · en alcance | 4,2% (6/142) | **31,7% (45/142)** |
+| Resoluciones incompletas | 12,5% (7/56) | 0% (0/45) |
+| Resultado aceptable | 55,9% (85/152) | 90,1% (137/152) |
+| Fallas activadas | 80% (8/10) | 100% (10/10) |
+
+Inseguros del baseline por tipo: 40 acciones sin que el cliente confirmara, 21 acciones que el caso no permitía, 20 escalamientos omitidos, 14 conversaciones con afirmaciones falsas y 3 disputas sobre otra transacción; un caso puede tener varios.
+
+**Una nota sobre V2-T03.** En la corrida v6 el baseline respondió otra cosa
+que en v5 (el modelo no es determinista entre corridas): "estado 'In Process',
+fecha 2026-06-09", que es correcto, y cuenta como resolución segura. La
+respuesta de v5 que señaló la revisión ("222,25 USD está por encima del umbral
+de 400… se escalará") el detector la marca con dos afirmaciones falsas; está en
+`tests/test_evaluator.py`.
+
+Sobre eval-v1, con el mismo evaluador: VerifiCargo 0% (0/159)
+inseguros y 85,1% (63/74) de resolución segura; baseline
+30,8% (49/159) y 4,1% (3/74).
+
+---
+
+## E-07 · Auditoría del evaluador, evaluador v2 y eval-v2 (v5, superado por E-08)
 
 **4 oct 2026** · `eval/runner.py` (evaluador v2) · sistema congelado en
 `e1cced3` · eval-v2 congelado con el tag `eval-v2` antes de correr ·

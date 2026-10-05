@@ -96,7 +96,8 @@ def open_questions(turn) -> list[str]:
     return questions
 
 
-def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[str, Any]:
+def enqueue(turn, session, engine, customer_message: str | None = None,
+            conversation_id: str | None = None) -> dict[str, Any]:
     """Arma el paquete del turno escalado, lo encola y lo relee.
 
     `customer_message` es lo último que el cliente ESCRIBIÓ: si el turno que
@@ -126,6 +127,8 @@ def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[
         "customer_id": session.customer_id, "country": session.country,
         "language": turn.language, "intent": (turn.extracted or {}).get("intent"),
         "transaction_id": txn["transaction_id"] if txn else None,
+        # Para devolverle al cliente la pregunta del agente (info_requested).
+        "conversation_id": conversation_id,
     }
     record = {"status": "pending", "queued_at": datetime.now().isoformat(timespec="seconds"),
               "package": json.loads(package.model_dump_json()), "internal": internal}
@@ -211,10 +214,48 @@ def update(handoff_id: str, status: str, agent: str, note: str,
                                                  "note": note, "result": result})
         if result is not None:
             target["result"] = result
+        if status == "info_requested":
+            # La nota ES la pregunta: llega al chat del cliente (questions_for).
+            target["info_request"] = {"question": note, "asked_at": now}
         if status in CLOSED_STATUSES:
             target["resolved_at"] = now
         _rewrite(rows)
         stored = get(handoff_id)
     if stored is None or stored["status"] != status:
         raise QueueError(f"el cambio de {handoff_id} no quedó registrado")
+    return stored
+
+
+def questions_for(conversation_id: str) -> list[dict[str, Any]]:
+    """Preguntas de agentes pendientes de respuesta en esta conversación."""
+    return [{"handoff_id": r["package"]["handoff_id"], **r["info_request"]}
+            for r in _load()
+            if r["status"] == "info_requested" and r.get("info_request")
+            and (r.get("internal") or {}).get("conversation_id") == conversation_id]
+
+
+def customer_reply(handoff_id: str, conversation_id: str, text: str) -> dict[str, Any]:
+    """El cliente responde la pregunta del agente: el caso vuelve a pendientes.
+
+    La respuesta es una afirmación del cliente, no un hecho verificado: se
+    guarda aparte, redactada (sin números de tarjeta), y el agente decide.
+    """
+    with _LOCK:
+        rows = _load()
+        target = next((r for r in rows if r["package"]["handoff_id"] == handoff_id), None)
+        if target is None or (target.get("internal") or {}).get("conversation_id") != conversation_id:
+            raise QueueError(f"no existe el caso {handoff_id} en esta conversación")
+        if target["status"] != "info_requested":
+            raise QueueError(f"el caso {handoff_id} no espera una respuesta del cliente")
+        now = datetime.now().isoformat(timespec="seconds")
+        target.setdefault("customer_replies", []).append(
+            {"at": now, "question": target["info_request"]["question"], "text": redact(text)[:500]})
+        target["status"] = "pending"
+        target.setdefault("history", []).append(
+            {"at": now, "status": "pending", "agent": "cliente", "note": "respondió la pregunta",
+             "result": None})
+        _rewrite(rows)
+        stored = get(handoff_id)
+    if stored is None or stored["status"] != "pending":
+        raise QueueError(f"la respuesta a {handoff_id} no quedó registrada")
     return stored

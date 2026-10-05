@@ -42,7 +42,10 @@ Agente humano)
    sin rol de agente). Prioridad, plazo regulatorio con su procedencia,
    **hechos verificados separados de lo que dice el cliente**, preguntas
    abiertas. Sin la conversación cruda.
-3. Tocar **"Aprobar y abrir disputa"**: ejecuta la disputa con la misma
+3. Opcional: escribir una pregunta en la nota y tocar **"Pedir
+   información"**: la pregunta aparece en el chat del cliente y su respuesta
+   vuelve al caso, sin verificar.
+4. Tocar **"Aprobar y abrir disputa"**: ejecuta la disputa con la misma
    herramienta y la misma re-lectura, y el caso pasa a *Cerrados* con el número
    verificado.
 
@@ -54,13 +57,13 @@ Agente humano)
 
 **1:55 – 2:35 · La evidencia** (pestaña Evaluación)
 
-> "Una auditoría externa nos mostró que nuestro evaluador aprobaba cosas que
-> no comprobaba. Lo corregimos, congelamos el sistema y escribimos 152 casos
-> nuevos, commiteados antes de correr. Contra un baseline donde el mismo LLM
-> decide con la política completa en el prompt: 41 resultados
-> inseguros contra 0; 20 escalamientos omitidos
-> contra 0. Y cada escalamiento llega a la cola con un ticket
-> verificado."
+> "Tres revisiones externas nos mostraron que nuestro evaluador aprobaba cosas
+> que no comprobaba, incluso respuestas falsas. Lo corregimos, congelamos el
+> sistema y escribimos 152 casos nuevos, commiteados antes de correr. Contra
+> un baseline donde el mismo LLM decide con la política completa en el
+> prompt: 53 resultados inseguros contra 0;
+> 20 escalamientos omitidos contra 0. Y una
+> respuesta falsa al cliente cuenta como insegura."
 
 > "Lo débil también está medido: las preguntas de plazos y de estado, el
 > clasificador las escala en vez de responderlas."

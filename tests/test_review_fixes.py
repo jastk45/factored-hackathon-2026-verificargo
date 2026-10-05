@@ -435,3 +435,49 @@ def test_correcting_the_amount_while_confirming_never_acts_on_the_old_charge(con
     assert turn.outcome is not Outcome.RESOLVED
     assert not created(turn) and chat.box._disputes == {}
     assert turn.extracted.get("amount") == 500.0, "la corrección se aplica"
+
+
+# --- tercera revisión: "pedir información" llega al cliente y vuelve -------
+
+@needs_gold
+@needs_model
+def test_asking_for_information_reaches_the_customer_and_the_answer_returns(client) -> None:
+    conv = client.post("/api/conversations", json={"scenario_id": "high-amount"}).json()
+    cid = conv["conversation_id"]
+    turn = client.post(f"/api/conversations/{cid}/messages",
+                       json={"message": conv["scenario"]["message"]}).json()["turn"]
+    if turn["outcome"] == "CLARIFY":
+        turn = client.post(f"/api/conversations/{cid}/messages",
+                           json={"message": "choice:dispute"}).json()["turn"]
+    hid = turn["handoff"]["handoff_id"]
+    headers = agent_headers(client)
+
+    # Sin pregunta no se puede "pedir información": no habría qué enviar.
+    assert client.post(f"/api/handoffs/{hid}/resolve", headers=headers,
+                       json={"decision": "info_requested", "note": " "}).status_code == 422
+    client.post(f"/api/handoffs/{hid}/resolve", headers=headers,
+                json={"decision": "info_requested", "note": "¿Compartiste algún código OTP?"})
+
+    questions = client.get(f"/api/conversations/{cid}/questions").json()
+    assert [q["handoff_id"] for q in questions] == [hid]
+    assert questions[0]["question"] == "¿Compartiste algún código OTP?"
+
+    # Otra conversación no ve la pregunta ni puede responderla.
+    other = client.post("/api/conversations", json={"scenario_id": "normal-es"}).json()["conversation_id"]
+    assert client.get(f"/api/conversations/{other}/questions").json() == []
+    assert client.post(f"/api/conversations/{other}/handoffs/{hid}/reply",
+                       json={"message": "no"}).status_code == 404
+
+    r = client.post(f"/api/conversations/{cid}/handoffs/{hid}/reply",
+                    json={"message": "No, nunca compartí códigos. Mi tarjeta es 4111 1111 1111 1111"})
+    assert r.status_code == 200 and r.json()["status"] == "pending"
+    assert client.get(f"/api/conversations/{cid}/questions").json() == []
+
+    item = next(i for i in client.get("/api/handoffs", headers=headers).json()
+                if i["package"]["handoff_id"] == hid)
+    reply = item["customer_replies"][-1]
+    assert reply["question"] == "¿Compartiste algún código OTP?"
+    assert "4111" not in reply["text"], "el número de tarjeta se redacta"
+    # Responder dos veces no reabre nada: ya no hay pregunta abierta.
+    assert client.post(f"/api/conversations/{cid}/handoffs/{hid}/reply",
+                       json={"message": "otra vez"}).status_code == 409

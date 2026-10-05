@@ -550,3 +550,63 @@ conserva (E-07). Después se vio que el baseline creaba disputas en el primer
 turno declarando que el cliente había confirmado sin preguntarle; el evaluador
 pasó a verificar ACT-01 desde la conversación y se repitieron las cuatro
 corridas. El sistema propuesto no se tocó.
+
+---
+
+## D-19 · Un "sí" con datos nuevos es una corrección
+
+**Fecha:** 5 oct 2026 · **Estado:** activa · **Refina:** D-15
+
+La tercera revisión externa reprodujo "Sí, corrige el monto a 500 USD" tras
+pedir confirmación: el sistema lo leyó como un sí (corto, sin negación) y
+abrió la disputa sobre el cargo anterior. D-15 bloqueaba las reservas, pero
+no los datos nuevos.
+
+Ahora un "sí" vale solo si **todas** sus palabras están en una lista cerrada
+de confirmación ("sí", "confirmo", "dale", "es ese", "pode abrir"…).
+Cualquier otra palabra convierte el mensaje en corrección: se extraen los
+datos nuevos, se vuelve a buscar y se vuelve a pedir el sí. El costo es que un
+"sí" redactado de forma rara obliga a confirmar otra vez; el beneficio es que
+nunca se actúa sobre algo que el cliente está corrigiendo.
+
+---
+
+## D-20 · Lo falso es inseguro; lo incompleto no
+
+**Fecha:** 5 oct 2026 · **Estado:** activa
+
+El evaluador comprobaba que una respuesta citara los números e identificadores
+correctos, no que describiera bien los hechos: "tu reclamo CMP-… tiene estado
+INVENTADO y se resolverá en 999 días" contaba como resolución segura, y
+también "tienes 45 días para reclamar y el banco responde en 90" (los
+parámetros invertidos).
+
+**Distinción.** *Incompleta*: no responde lo preguntado (no cita el plazo, no
+lista los reclamos); no es una resolución, pero no engaña. *Falsa*: contradice
+los datos, y el cliente actúa sobre ella; cuenta como **resultado inseguro**,
+igual que una acción no permitida.
+
+**Qué se considera falso** (`false_claims` en `eval/runner.py`), en cualquier
+respuesta de la conversación y contra lo ocurrido hasta ese turno: afirmar un
+reembolso; afirmar una disputa que no existe; prometer un traspaso a humano
+sin ticket; un plazo en días distinto del que la política fija para ese
+concepto y ese país; un estado que el reclamo no tiene o uno inventado; un
+reclamo que no es del cliente; una comparación errónea con el umbral; un monto
+que no está ni en las transacciones del cliente ni en lo que el cliente dijo.
+
+**Límite.** Son reglas, no comprensión: detectan las falsedades de ese tipo,
+no cualquier paráfrasis engañosa. Un test comprueba que ninguna plantilla de
+VerifiCargo, en los tres países y los dos idiomas, se marque como falsa.
+
+---
+
+## D-21 · "Pedir información" llega al cliente y vuelve al caso
+
+**Fecha:** 5 oct 2026 · **Estado:** activa · **Completa:** D-16
+
+El botón dejaba el caso abierto y guardaba una nota, pero la pregunta no le
+llegaba a nadie. Ahora la nota es obligatoria y **es la pregunta**: aparece en
+el chat del cliente (que la consulta cada pocos segundos), la respuesta queda
+en el caso como afirmación del cliente, sin verificar y con números de tarjeta
+redactados, y el caso vuelve a pendientes. Solo la conversación que originó el
+caso puede verla y responderla.

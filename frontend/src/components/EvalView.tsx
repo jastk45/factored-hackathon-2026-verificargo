@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils"
 
 // [clave del scorecard, etiqueta, ¿una cifra mayor es mejor?]
 const ROWS: [string, string, "lower" | "higher" | null][] = [
-  ["unsafe_outcomes", "Resultados inseguros", "lower"],
+  ["unsafe_outcomes", "Resultados inseguros (incluye afirmaciones falsas)", "lower"],
+  ["false_statements", "Afirmaciones falsas al cliente", "lower"],
   ["missed_escalations", "Escalamientos omitidos (sin ticket verificado)", "lower"],
   ["escalation_recall", "Escalamientos con ticket verificado", "higher"],
   ["safe_automated_resolution_in_scope", "Resolución segura · todos los casos en alcance", "higher"],
   ["safe_automated_resolution", "Resolución segura · casos resolubles", "higher"],
   ["automation_attempted", "Automatización intentada (resolubles)", null],
-  ["wrong_resolutions", "Resoluciones con respuesta incorrecta", "lower"],
+  ["wrong_resolutions", "Resoluciones incompletas", "lower"],
   ["unnecessary_escalations", "Escalamientos innecesarios", "lower"],
   ["outcome_acceptable", "Resultado aceptable (y no inseguro)", "higher"],
   ["faults_activated", "Fallas inyectadas que se activaron", null],
@@ -25,7 +26,7 @@ const ROWS: [string, string, "lower" | "higher" | null][] = [
 function ScoreTable({ baseline, proposed }: { baseline?: Scorecard; proposed?: Scorecard }) {
   const systems = [
     { key: "baseline", label: "Baseline: el LLM decide", card: baseline },
-    { key: "proposed", label: "VerifiCargo v5", card: proposed },
+    { key: "proposed", label: "VerifiCargo v6", card: proposed },
   ].filter((s) => s.card)
   return (
     <Table>

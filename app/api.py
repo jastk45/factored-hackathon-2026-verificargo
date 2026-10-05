@@ -11,6 +11,8 @@ Endpoints:
     POST /api/conversations                     {scenario_id}
     POST /api/conversations/{id}/messages       {message}
     POST /api/conversations/{id}/step-up        {otp}
+    GET  /api/conversations/{id}/questions      preguntas del agente para el cliente
+    POST /api/conversations/{id}/handoffs/{handoff_id}/reply   {message}
     POST /api/agent/login                       {access_code}
     GET  /api/handoffs?status=pending|info_requested|closed     (token de agente)
     POST /api/handoffs/{handoff_id}/resolve     {decision, note} (token de agente)
@@ -191,8 +193,8 @@ def new_conversation(body: NewConversation) -> dict[str, Any]:
     # El lock serializa los requests de UNA conversación (p. ej. un doble
     # clic): el contexto del turno anterior tiene que estar escrito antes de
     # leer el siguiente. Conversaciones distintas siguen en paralelo.
-    CONVERSATIONS[cid] = {"token": token, "context": None, "box": None, "scenario": sc,
-                          "lock": threading.Lock()}
+    CONVERSATIONS[cid] = {"id": cid, "token": token, "context": None, "box": None,
+                          "scenario": sc, "lock": threading.Lock()}
     return {"conversation_id": cid, "scenario": sc, "session": session_info(token)}
 
 
@@ -232,7 +234,8 @@ def deliver_handoff(turn: Turn, conv: dict[str, Any]) -> dict[str, Any]:
     """
     try:
         package = handoff_queue.enqueue(turn, verify_token(conv["token"]), ENGINE,
-                                        customer_message=conv.get("last_customer_text"))
+                                        customer_message=conv.get("last_customer_text"),
+                                        conversation_id=conv["id"])
         return {"handoff_id": package["handoff_id"], "queued": True}
     except Exception as exc:  # noqa: BLE001
         reason = f"{type(exc).__name__}: {exc}"[:200]
@@ -272,6 +275,25 @@ def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
         "status": r["transaction_status"],
         "channel": r["channel"],
     } for r in rows]
+
+
+@app.get("/api/conversations/{cid}/questions")
+def agent_questions(cid: str) -> list[dict[str, Any]]:
+    """Lo que un agente le preguntó a este cliente y espera respuesta."""
+    conversation(cid)
+    return handoff_queue.questions_for(cid)
+
+
+@app.post("/api/conversations/{cid}/handoffs/{handoff_id}/reply")
+def reply_to_agent(cid: str, handoff_id: str, body: Message) -> dict[str, Any]:
+    """El cliente responde al agente. Solo sobre un caso de SU conversación."""
+    conv = conversation(cid)
+    with conv["lock"]:
+        try:
+            stored = handoff_queue.customer_reply(handoff_id, cid, body.message)
+        except handoff_queue.QueueError as exc:
+            raise HTTPException(404 if "no existe" in str(exc) else 409, str(exc)) from exc
+    return {"ok": True, "handoff_id": handoff_id, "status": stored["status"]}
 
 
 @app.post("/api/conversations/{cid}/step-up")
@@ -333,6 +355,8 @@ def resolve_handoff(handoff_id: str, body: Resolution,
     mismo caso a la vez no pueden aprobarlo los dos.
     """
     with _RESOLVE_LOCK:
+        if body.decision == "info_requested" and not body.note.strip():
+            raise HTTPException(422, "Escribí la pregunta para el cliente: es lo que le llega.")
         record = handoff_queue.get(handoff_id)
         if record is None:
             raise HTTPException(404, "caso inexistente")
@@ -385,7 +409,9 @@ def eval_reports() -> dict[str, Any]:
     out: dict[str, Any] = {}
     for cases in ("v2", "v1"):
         for system in ("baseline", "proposed"):
-            path = reports / f"system_{system}_{cases}_v5.json"
+            path = next((p for p in (reports / f"system_{system}_{cases}_v6.json",
+                                     reports / f"system_{system}_{cases}_v5.json") if p.exists()),
+                        reports / f"system_{system}_{cases}_v6.json")
             if path.exists():
                 data = json.loads(path.read_text(encoding="utf-8"))
                 out.setdefault(cases, {})[system] = data["scorecard"]

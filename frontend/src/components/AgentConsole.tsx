@@ -121,6 +121,23 @@ function CaseCard({ item, token, onResolved }: { item: QueueItem; token: string;
             ) : (
               <p className="text-sm text-muted-foreground">Nada que verificar.</p>
             )}
+            {item.info_request && item.status === "info_requested" && (
+              <p className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-sm">
+                Pregunta enviada al cliente: {item.info_request.question}
+              </p>
+            )}
+            {item.customer_replies?.length ? (
+              <>
+                <h4 className="mb-1.5 mt-3 text-sm font-semibold">Respuestas del cliente (sin verificar)</h4>
+                <ul className="space-y-1.5 text-sm">
+                  {item.customer_replies.map((r, i) => (
+                    <li key={i} className="rounded-md border border-dashed px-2.5 py-1.5">
+                      <span className="text-muted-foreground">{r.question} → </span>{r.text}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             <h4 className="mb-1.5 mt-3 text-sm font-semibold">Preguntas abiertas</h4>
             <ul className="list-disc space-y-1 pl-4 text-sm">
               {p.open_questions.map((q, i) => (
@@ -136,13 +153,14 @@ function CaseCard({ item, token, onResolved }: { item: QueueItem; token: string;
 
         <Separator />
         <div className="flex flex-wrap items-center gap-2">
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota del agente" className="h-8 max-w-sm" />
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nota, o la pregunta para el cliente" className="h-8 max-w-sm" />
           <Button size="sm" onClick={() => resolve("approved")} disabled={busy || !item.can_approve}
             title={item.can_approve ? "Abre la disputa y la verifica al releer" : "No hay una transacción verificada para disputar"}>
             <CheckCircle2 className="size-3.5" /> Aprobar y abrir disputa
           </Button>
           {item.status === "pending" && (
-            <Button size="sm" variant="outline" onClick={() => resolve("info_requested")} disabled={busy}>
+            <Button size="sm" variant="outline" onClick={() => resolve("info_requested")} disabled={busy || !note.trim()}
+              title={note.trim() ? "La nota se envía al cliente como pregunta" : "Escribí la pregunta en la nota"}>
               <CircleHelp className="size-3.5" /> Pedir información
             </Button>
           )}

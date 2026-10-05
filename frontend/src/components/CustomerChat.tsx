@@ -8,10 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ActionCards, OutcomeBadge, TracePanel } from "@/components/shared"
-import { api, type Scenario, type SessionInfo, type TurnResult, type Txn } from "@/lib/api"
+import { api, type AgentQuestion, type Scenario, type SessionInfo, type TurnResult, type Txn } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
-type Entry = { role: "user"; text: string } | { role: "assistant"; turn: TurnResult }
+type Entry =
+  | { role: "user"; text: string }
+  | { role: "assistant"; turn: TurnResult }
+  | { role: "agent"; text: string; handoffId: string }
+  | { role: "notice"; text: string }
 
 const PATH_STYLE: Record<Scenario["path"], string> = {
   normal: "bg-emerald-50 text-emerald-800 border-emerald-200",
@@ -27,7 +31,9 @@ const T = {
   es: {
     hello: "Hola", accounts: "Tu tarjeta de crédito", recent: "Movimientos recientes",
     notMine: "¿No lo reconocés?", open: "¿Un cargo que no reconocés?", assistant: "Asistente de disputas",
-    placeholder: "Escribí tu mensaje", confirm: "Sí, confirmo", cancel: "No, cancelar", otp: "Ingresá el código que te enviamos",
+    placeholder: "Escribí tu mensaje", confirm: "Sí, confirmo", cancel: "No, cancelar",
+    agentAsks: "Un especialista te pregunta", replyPlaceholder: "Tu respuesta para el especialista",
+    replySent: "Tu respuesta se envió al especialista (caso {id}). No hace falta que repitas lo anterior.", otp: "Ingresá el código que te enviamos",
     verify: "Verificar", verified: "Identidad verificada", greeting:
       "Hola, soy el asistente de disputas. Contame qué cargo no reconocés: el monto, la fecha y el comercio me ayudan a encontrarlo.",
     date: "Fecha", merchant: "Comercio", amount: "Monto", status: "Estado",
@@ -35,7 +41,9 @@ const T = {
   pt: {
     hello: "Olá", accounts: "Seu cartão de crédito", recent: "Movimentações recentes",
     notMine: "Não reconhece?", open: "Uma cobrança que não reconhece?", assistant: "Assistente de contestações",
-    placeholder: "Escreva sua mensagem", confirm: "Sim, confirmo", cancel: "Não, cancelar", otp: "Digite o código que enviamos",
+    placeholder: "Escreva sua mensagem", confirm: "Sim, confirmo", cancel: "Não, cancelar",
+    agentAsks: "Um especialista pergunta", replyPlaceholder: "Sua resposta para o especialista",
+    replySent: "Sua resposta foi enviada ao especialista (caso {id}). Não precisa repetir o que já disse.", otp: "Digite o código que enviamos",
     verify: "Verificar", verified: "Identidade verificada", greeting:
       "Olá, sou o assistente de contestações. Me conte qual cobrança não reconhece: valor, data e estabelecimento me ajudam a encontrá-la.",
     date: "Data", merchant: "Estabelecimento", amount: "Valor", status: "Situação",
@@ -57,7 +65,37 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
   const [otp, setOtp] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Pregunta abierta de un agente humano: el próximo mensaje va a ese caso.
+  const [question, setQuestion] = useState<AgentQuestion | null>(null)
+  const shownQuestions = useRef<Set<string>>(new Set())
   const bottom = useRef<HTMLDivElement>(null)
+
+  // "Pedir información" desde la consola llega acá: se consulta cada pocos
+  // segundos mientras haya una conversación.
+  useEffect(() => {
+    if (!cid) return
+    const poll = () =>
+      api.questions(cid).then((qs) => {
+        const q = qs[0] ?? null
+        const key = q ? `${q.handoff_id}·${q.asked_at}` : null
+        if (q && key && !shownQuestions.current.has(key)) {
+          shownQuestions.current.add(key)
+          setEntries((e) => [...e, { role: "agent", text: q.question, handoffId: q.handoff_id }])
+          setOpen(true)
+        }
+        setQuestion(q)
+      }).catch(() => undefined)
+    poll()
+    const id = setInterval(poll, 4000)
+    // Con la ventana oculta el navegador frena los timers: al volver, se
+    // consulta de inmediato.
+    const onVisible = () => document.visibilityState === "visible" && poll()
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [cid])
 
   useEffect(() => {
     api.scenarios().then((s) => {
@@ -79,6 +117,7 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
     setCid(r.conversation_id)
     setSession(r.session)
     setEntries([])
+    setQuestion(null)
     setInput(r.scenario.message)
     setOtp("")
     api.transactions(r.conversation_id).then(setTxns).catch(() => setTxns([]))
@@ -91,6 +130,13 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
     setEntries((e) => [...e, { role: "user", text: display ?? text }])
     setInput("")
     try {
+      if (question) {
+        await api.replyToAgent(cid, question.handoff_id, text)
+        setEntries((e) => [...e, { role: "notice", text: t.replySent.replace("{id}", question.handoff_id) }])
+        setQuestion(null)
+        onEscalated()
+        return
+      }
       const r = await api.send(cid, text)
       setEntries((e) => [...e, { role: "assistant", turn: r.turn }])
       setSession(r.session)
@@ -260,7 +306,14 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
           <div className="flex-1 space-y-3 overflow-y-auto bg-muted/30 p-3">
             <div className="max-w-[90%] rounded-2xl rounded-bl-sm border bg-background px-3 py-2 text-sm">{t.greeting}</div>
             {entries.map((e, i) =>
-              e.role === "user" ? (
+              e.role === "agent" ? (
+                <div key={i} className="max-w-[94%] rounded-2xl rounded-bl-sm border border-amber-300 bg-amber-50 px-3 py-2 text-sm">
+                  <p className="mb-1 text-xs font-semibold text-amber-900">{t.agentAsks} · {e.handoffId}</p>
+                  <p>{e.text}</p>
+                </div>
+              ) : e.role === "notice" ? (
+                <p key={i} className="text-center text-xs text-muted-foreground">{e.text}</p>
+              ) : e.role === "user" ? (
                 <div key={i} className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
                     {e.text}
@@ -314,7 +367,8 @@ export function CustomerChat({ onEscalated }: { onEscalated: () => void }) {
               </div>
             ) : null}
             <form className="flex gap-2" onSubmit={(ev) => { ev.preventDefault(); send(input) }}>
-              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder} />
+              <Input value={input} onChange={(e) => setInput(e.target.value)}
+                placeholder={question ? t.replyPlaceholder : t.placeholder} />
               <Button type="submit" size="icon" disabled={busy || !input.trim()}>
                 <Send className="size-4" />
               </Button>

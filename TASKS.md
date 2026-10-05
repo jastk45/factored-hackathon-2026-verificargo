@@ -188,6 +188,14 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 - [x] **P0** `[EVAL]` Correr los dos sistemas sobre eval-v2 y eval-v1 con el evaluador v2; actualizar README, E-07, deck y vista de Evaluación. — *Hecho: eval-v2 0/152 inseguros contra 41/152 del baseline.* **→ E-07**
 - [x] **P1** `[SHIP]` ESLint sin errores; se quita la UI de Streamlit (salteaba el flujo de aprobación).
 
+### Tercera revisión (5 oct)
+
+- [x] **P0** `[AGENT]` Concurrencia: cursor de DuckDB por request y locks en disputas, cola y conversación. **→ tests/test_concurrency.py**
+- [x] **P0** `[AGENT]` Un "sí" con datos nuevos es una corrección (D-19). — *Hecho: "Sí, corrige el monto a 500 USD" ya no confirma.*
+- [x] **P0** `[EVAL]` Lo falso es inseguro; lo incompleto no (D-20). — *Hecho: tests con los ejemplos de la revisión y con todas las plantillas.*
+- [x] **P0** `[AGENT]` "Pedir información" llega al chat del cliente y la respuesta vuelve al caso (D-21).
+- [x] **P0** `[EVAL]` Correr los cuatro reportes v6 y actualizar README, E-08, deck y vista de Evaluación. — *Hecho: eval-v2 0/152 inseguros y 0 afirmaciones falsas contra 53/152 y 14/152 del baseline.*
+
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
 - [ ] **P0** `[SHIP]` **ENVIAR a hackathon.admin@factored.ai**: link del repo, link del deploy, slides, video. — *Hecho: email enviado con acuse.*
 
