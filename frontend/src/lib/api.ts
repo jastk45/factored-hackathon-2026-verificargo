@@ -113,7 +113,27 @@ export interface AgentQuestion {
 
 export type Scorecard = Record<string, unknown>
 
+export interface Combined {
+  rate: number | null
+  num: number | null
+  den: number | null
+  per_run_den?: number
+  range: [number, number] | null
+  runs?: number
+}
+
+export interface RunSummary {
+  runs: number
+  n_cases: number
+  metrics: Record<string, Combined>
+  latency: Record<string, number>
+  by_language?: Record<string, Record<string, Combined | number>>
+  by_country?: Record<string, Record<string, Combined | number>>
+  by_segment?: Record<string, Record<string, Combined | number>>
+}
+
 export interface EvalData {
+  v3?: { baseline?: RunSummary; proposed?: RunSummary }
   v1?: { baseline?: Scorecard; proposed?: Scorecard }
   v2?: { baseline?: Scorecard; proposed?: Scorecard }
   classifier?: {

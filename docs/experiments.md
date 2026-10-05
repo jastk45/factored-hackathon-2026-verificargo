@@ -281,7 +281,57 @@ respuesta.
 
 ---
 
-## E-09 · Cuarta revisión: negaciones, condiciones y sesiones vencidas (resultado vigente)
+## E-10 · eval-v3: la versión final sobre casos nuevos, 3 corridas (resultado vigente)
+
+**5 oct 2026** · sistema, prompts y evaluador congelados en `42d971d` (tag
+`system-v6-frozen`) · eval-v3 generado después y congelado en `ab24957` (tag
+`eval-v3`) · 3 corridas por sistema · `eval/aggregate.py` →
+`eval/reports/summary_v3_v6.json`
+
+**Por qué.** Una revisión externa señaló que v6 ya había visto eval-v2, que
+una sola corrida no mide la variación del LLM y que faltaban los cortes por
+segmento. El único cambio en el código después del congelado es registrar la
+ruta del set nuevo en el runner.
+
+**eval-v3.** 152 casos, misma estructura de bloques y mismo oráculo
+que eval-v2; transacciones que no están en eval-v1, eval-v2 ni los fixtures;
+redacción nueva en todos los bloques; ningún mensaje igual a eval-v2.
+
+| | Baseline: el LLM decide con la política en el prompt | **VerifiCargo** |
+|---|---:|---:|
+| **Resultados inseguros detectados** (acciones, escalamientos y afirmaciones falsas) | 24,6% (36–39 de 152 por corrida) | **0% (0 de 152 en cada corrida)** |
+| Afirmaciones falsas al cliente | 5,7% (8–9 de 152 por corrida) | 0% (0 de 152 en cada corrida) |
+| **Escalamientos omitidos** (sin ticket verificado) | 22% (11 de 50 en cada corrida) | **0% (0 de 50 en cada corrida)** |
+| **Resolución segura · todos los casos en alcance** | 8% (11–12 de 142 por corrida) | **28,6% (40–41 de 142 por corrida)** |
+| Resolución segura · casos resolubles | 18,6% (11–12 de 61 por corrida) | 66,7% (40–41 de 61 por corrida) |
+| Resoluciones incompletas | 23,7% (11–13 de 53 por corrida) | 0% (0 de 41 en cada corrida) |
+| Escalamientos innecesarios | 46% (41–45 de 92 por corrida) | 26,1% (24 de 92 en cada corrida) |
+| Resultado aceptable (y no inseguro) | 68,6% (103–107 de 152 por corrida) | 87,3% (132–133 de 152 por corrida) |
+| Fallas inyectadas que se activaron | 76,7% (7–8 de 10 por corrida) | 100% (10 de 10 en cada corrida) |
+| Latencia por turno p50 / p95 | 2,7 s / 2,9 s | 2,2 s / 2,3 s |
+| Latencia por conversación completa p50 / p95 | 2,7 s / 2,9 s | 2,4 s / 6,6 s |
+| Turnos por conversación (media) | 1,00 | 2,65 |
+
+| Corte | Casos por corrida | Inseguros: baseline | Inseguros: VerifiCargo | Resolución segura (resolubles): baseline | VerifiCargo |
+|---|---:|---:|---:|---:|---:|
+| Idioma: es | 77 | 30,7% (71/231) | 0% (0/231) | 21,1% (19/90) | 65,6% (59/90) |
+| Idioma: pt | 75 | 18,2% (41/225) | 0% (0/225) | 16,1% (15/93) | 67,7% (63/93) |
+| País: AR | 29 | 18,4% (16/87) | 0% (0/87) | 20% (9/45) | 64,4% (29/45) |
+| País: CO | 70 | 22,4% (47/210) | 0% (0/210) | 22,2% (12/54) | 66,7% (36/54) |
+| País: MX | 53 | 30,8% (49/159) | 0% (0/159) | 15,5% (13/84) | 67,9% (57/84) |
+| Segmento: Basic | 76 | 31,6% (72/228) | 0% (0/228) | 18,3% (22/120) | 69,2% (83/120) |
+| Segmento: Plus | 17 | 29,4% (15/51) | 0% (0/51) | 0% (0/18) | 83,3% (15/18) |
+| Segmento: Premium | 53 | 15,7% (25/159) | 0% (0/159) | 33,3% (12/36) | 50% (18/36) |
+| Segmento: Student | 6 | 0% (0/18) | 0% (0/18) | 0% (0/9) | 66,7% (6/9) |
+
+**Lectura.** VerifiCargo: **0 resultados inseguros detectados en 152 casos, en cada una de las 3 corridas**. La variación entre corridas está
+en el rango de cada celda; la del baseline es mayor porque decide todo con el
+LLM. Las muestras por corte son chicas (algunas decenas de casos): sirven para
+ver que ningún grupo queda muy por debajo, no para compararlos entre sí.
+
+---
+
+## E-09 · Cuarta revisión: negaciones, condiciones y sesiones vencidas (eval-v2 recalificado)
 
 **5 oct 2026** · mismas conversaciones de E-08, **recalificadas** con el
 detector corregido (sin volver a llamar al modelo) · reportes

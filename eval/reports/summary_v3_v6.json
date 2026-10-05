@@ -1,0 +1,1138 @@
+{
+  "baseline": {
+    "files": [
+      "system_baseline_v3_v6-r1.json",
+      "system_baseline_v3_v6-r2.json",
+      "system_baseline_v3_v6-r3.json"
+    ],
+    "runs": 3,
+    "n_cases": 152,
+    "metrics": {
+      "unsafe_outcomes": {
+        "rate": 0.24561403508771928,
+        "num": 112,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          36,
+          39
+        ],
+        "runs": 3
+      },
+      "false_statements": {
+        "rate": 0.05701754385964912,
+        "num": 26,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          8,
+          9
+        ],
+        "runs": 3
+      },
+      "missed_escalations": {
+        "rate": 0.22,
+        "num": 33,
+        "den": 150,
+        "per_run_den": 50,
+        "range": [
+          11,
+          11
+        ],
+        "runs": 3
+      },
+      "escalation_recall": {
+        "rate": 0.78,
+        "num": 117,
+        "den": 150,
+        "per_run_den": 50,
+        "range": [
+          39,
+          39
+        ],
+        "runs": 3
+      },
+      "safe_automated_resolution": {
+        "rate": 0.18579234972677597,
+        "num": 34,
+        "den": 183,
+        "per_run_den": 61,
+        "range": [
+          11,
+          12
+        ],
+        "runs": 3
+      },
+      "safe_automated_resolution_in_scope": {
+        "rate": 0.07981220657276995,
+        "num": 34,
+        "den": 426,
+        "per_run_den": 142,
+        "range": [
+          11,
+          12
+        ],
+        "runs": 3
+      },
+      "automation_attempted": {
+        "rate": 0.5846994535519126,
+        "num": 107,
+        "den": 183,
+        "per_run_den": 61,
+        "range": [
+          33,
+          37
+        ],
+        "runs": 3
+      },
+      "wrong_resolutions": {
+        "rate": 0.23717948717948717,
+        "num": 37,
+        "den": 156,
+        "per_run_den": 53,
+        "range": [
+          11,
+          13
+        ],
+        "runs": 3
+      },
+      "unnecessary_escalations": {
+        "rate": 0.4601449275362319,
+        "num": 127,
+        "den": 276,
+        "per_run_den": 92,
+        "range": [
+          41,
+          45
+        ],
+        "runs": 3
+      },
+      "outcome_acceptable": {
+        "rate": 0.6864035087719298,
+        "num": 313,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          103,
+          107
+        ],
+        "runs": 3
+      },
+      "faults_activated": {
+        "rate": 0.7666666666666667,
+        "num": 23,
+        "den": 30,
+        "per_run_den": 10,
+        "range": [
+          7,
+          8
+        ],
+        "runs": 3
+      }
+    },
+    "latency": {
+      "latency_turn_p50_ms": 2687.6666666666665,
+      "latency_turn_p95_ms": 2870.3333333333335,
+      "latency_case_p50_ms": 2687.6666666666665,
+      "latency_case_p95_ms": 2870.3333333333335,
+      "avg_turns": 1
+    },
+    "by_language": {
+      "es": {
+        "n": 77,
+        "unsafe_outcomes": {
+          "rate": 0.30735930735930733,
+          "num": 71,
+          "den": 231,
+          "per_run_den": 77,
+          "range": [
+            23,
+            24
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.2111111111111111,
+          "num": 19,
+          "den": 90,
+          "per_run_den": 30,
+          "range": [
+            6,
+            7
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.6923076923076923,
+          "num": 54,
+          "den": 78,
+          "per_run_den": 26,
+          "range": [
+            18,
+            18
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.6190476190476191,
+          "num": 143,
+          "den": 231,
+          "per_run_den": 77,
+          "range": [
+            47,
+            49
+          ],
+          "runs": 3
+        }
+      },
+      "pt": {
+        "n": 75,
+        "unsafe_outcomes": {
+          "rate": 0.18222222222222223,
+          "num": 41,
+          "den": 225,
+          "per_run_den": 75,
+          "range": [
+            13,
+            15
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.16129032258064516,
+          "num": 15,
+          "den": 93,
+          "per_run_den": 31,
+          "range": [
+            5,
+            5
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.875,
+          "num": 63,
+          "den": 72,
+          "per_run_den": 24,
+          "range": [
+            21,
+            21
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.7555555555555555,
+          "num": 170,
+          "den": 225,
+          "per_run_den": 75,
+          "range": [
+            56,
+            58
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "by_country": {
+      "AR": {
+        "n": 29,
+        "unsafe_outcomes": {
+          "rate": 0.1839080459770115,
+          "num": 16,
+          "den": 87,
+          "per_run_den": 29,
+          "range": [
+            4,
+            6
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.2,
+          "num": 9,
+          "den": 45,
+          "per_run_den": 15,
+          "range": [
+            3,
+            3
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.8888888888888888,
+          "num": 24,
+          "den": 27,
+          "per_run_den": 9,
+          "range": [
+            8,
+            8
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8160919540229885,
+          "num": 71,
+          "den": 87,
+          "per_run_den": 29,
+          "range": [
+            23,
+            25
+          ],
+          "runs": 3
+        }
+      },
+      "CO": {
+        "n": 70,
+        "unsafe_outcomes": {
+          "rate": 0.22380952380952382,
+          "num": 47,
+          "den": 210,
+          "per_run_den": 70,
+          "range": [
+            15,
+            16
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.2222222222222222,
+          "num": 12,
+          "den": 54,
+          "per_run_den": 18,
+          "range": [
+            4,
+            4
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.8095238095238095,
+          "num": 51,
+          "den": 63,
+          "per_run_den": 21,
+          "range": [
+            17,
+            17
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.6857142857142857,
+          "num": 144,
+          "den": 210,
+          "per_run_den": 70,
+          "range": [
+            48,
+            48
+          ],
+          "runs": 3
+        }
+      },
+      "MX": {
+        "n": 53,
+        "unsafe_outcomes": {
+          "rate": 0.3081761006289308,
+          "num": 49,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            16,
+            17
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.15476190476190477,
+          "num": 13,
+          "den": 84,
+          "per_run_den": 28,
+          "range": [
+            4,
+            5
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.7,
+          "num": 42,
+          "den": 60,
+          "per_run_den": 20,
+          "range": [
+            14,
+            14
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.6163522012578616,
+          "num": 98,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            32,
+            34
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "by_segment": {
+      "Basic": {
+        "n": 76,
+        "unsafe_outcomes": {
+          "rate": 0.3157894736842105,
+          "num": 72,
+          "den": 228,
+          "per_run_den": 76,
+          "range": [
+            23,
+            25
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.18333333333333332,
+          "num": 22,
+          "den": 120,
+          "per_run_den": 40,
+          "range": [
+            7,
+            8
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.7407407407407407,
+          "num": 60,
+          "den": 81,
+          "per_run_den": 27,
+          "range": [
+            20,
+            20
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.6403508771929824,
+          "num": 146,
+          "den": 228,
+          "per_run_den": 76,
+          "range": [
+            48,
+            50
+          ],
+          "runs": 3
+        }
+      },
+      "Plus": {
+        "n": 17,
+        "unsafe_outcomes": {
+          "rate": 0.29411764705882354,
+          "num": 15,
+          "den": 51,
+          "per_run_den": 17,
+          "range": [
+            5,
+            5
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.8,
+          "num": 24,
+          "den": 30,
+          "per_run_den": 10,
+          "range": [
+            8,
+            8
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.7058823529411765,
+          "num": 36,
+          "den": 51,
+          "per_run_den": 17,
+          "range": [
+            12,
+            12
+          ],
+          "runs": 3
+        }
+      },
+      "Premium": {
+        "n": 53,
+        "unsafe_outcomes": {
+          "rate": 0.15723270440251572,
+          "num": 25,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            7,
+            9
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.3333333333333333,
+          "num": 12,
+          "den": 36,
+          "per_run_den": 12,
+          "range": [
+            4,
+            4
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 0.8333333333333334,
+          "num": 30,
+          "den": 36,
+          "per_run_den": 12,
+          "range": [
+            10,
+            10
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.7295597484276729,
+          "num": 116,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            38,
+            40
+          ],
+          "runs": 3
+        }
+      },
+      "Student": {
+        "n": 6,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 9,
+          "per_run_den": 3,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 3,
+          "den": 3,
+          "per_run_den": 1,
+          "range": [
+            1,
+            1
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8333333333333334,
+          "num": 15,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            5,
+            5
+          ],
+          "runs": 3
+        }
+      }
+    }
+  },
+  "proposed": {
+    "files": [
+      "system_proposed_v3_v6-r1.json",
+      "system_proposed_v3_v6-r2.json",
+      "system_proposed_v3_v6-r3.json"
+    ],
+    "runs": 3,
+    "n_cases": 152,
+    "metrics": {
+      "unsafe_outcomes": {
+        "rate": 0.0,
+        "num": 0,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          0,
+          0
+        ],
+        "runs": 3
+      },
+      "false_statements": {
+        "rate": 0.0,
+        "num": 0,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          0,
+          0
+        ],
+        "runs": 3
+      },
+      "missed_escalations": {
+        "rate": 0.0,
+        "num": 0,
+        "den": 150,
+        "per_run_den": 50,
+        "range": [
+          0,
+          0
+        ],
+        "runs": 3
+      },
+      "escalation_recall": {
+        "rate": 1.0,
+        "num": 150,
+        "den": 150,
+        "per_run_den": 50,
+        "range": [
+          50,
+          50
+        ],
+        "runs": 3
+      },
+      "safe_automated_resolution": {
+        "rate": 0.6666666666666666,
+        "num": 122,
+        "den": 183,
+        "per_run_den": 61,
+        "range": [
+          40,
+          41
+        ],
+        "runs": 3
+      },
+      "safe_automated_resolution_in_scope": {
+        "rate": 0.2863849765258216,
+        "num": 122,
+        "den": 426,
+        "per_run_den": 142,
+        "range": [
+          40,
+          41
+        ],
+        "runs": 3
+      },
+      "automation_attempted": {
+        "rate": 0.6721311475409836,
+        "num": 123,
+        "den": 183,
+        "per_run_den": 61,
+        "range": [
+          41,
+          41
+        ],
+        "runs": 3
+      },
+      "wrong_resolutions": {
+        "rate": 0.0,
+        "num": 0,
+        "den": 122,
+        "per_run_den": 41,
+        "range": [
+          0,
+          0
+        ],
+        "runs": 3
+      },
+      "unnecessary_escalations": {
+        "rate": 0.2608695652173913,
+        "num": 72,
+        "den": 276,
+        "per_run_den": 92,
+        "range": [
+          24,
+          24
+        ],
+        "runs": 3
+      },
+      "outcome_acceptable": {
+        "rate": 0.8728070175438597,
+        "num": 398,
+        "den": 456,
+        "per_run_den": 152,
+        "range": [
+          132,
+          133
+        ],
+        "runs": 3
+      },
+      "faults_activated": {
+        "rate": 1.0,
+        "num": 30,
+        "den": 30,
+        "per_run_den": 10,
+        "range": [
+          10,
+          10
+        ],
+        "runs": 3
+      }
+    },
+    "latency": {
+      "latency_turn_p50_ms": 2176.6666666666665,
+      "latency_turn_p95_ms": 2336.3333333333335,
+      "latency_case_p50_ms": 2387.6666666666665,
+      "latency_case_p95_ms": 6607.666666666667,
+      "avg_turns": 2.6533333333333333
+    },
+    "by_language": {
+      "es": {
+        "n": 77,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 231,
+          "per_run_den": 77,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6555555555555556,
+          "num": 59,
+          "den": 90,
+          "per_run_den": 30,
+          "range": [
+            19,
+            20
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 78,
+          "den": 78,
+          "per_run_den": 26,
+          "range": [
+            26,
+            26
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8658008658008658,
+          "num": 200,
+          "den": 231,
+          "per_run_den": 77,
+          "range": [
+            66,
+            67
+          ],
+          "runs": 3
+        }
+      },
+      "pt": {
+        "n": 75,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 225,
+          "per_run_den": 75,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6774193548387096,
+          "num": 63,
+          "den": 93,
+          "per_run_den": 31,
+          "range": [
+            21,
+            21
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 72,
+          "den": 72,
+          "per_run_den": 24,
+          "range": [
+            24,
+            24
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.88,
+          "num": 198,
+          "den": 225,
+          "per_run_den": 75,
+          "range": [
+            66,
+            66
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "by_country": {
+      "AR": {
+        "n": 29,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 87,
+          "per_run_den": 29,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6444444444444445,
+          "num": 29,
+          "den": 45,
+          "per_run_den": 15,
+          "range": [
+            9,
+            10
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 27,
+          "den": 27,
+          "per_run_den": 9,
+          "range": [
+            9,
+            9
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8505747126436781,
+          "num": 74,
+          "den": 87,
+          "per_run_den": 29,
+          "range": [
+            24,
+            25
+          ],
+          "runs": 3
+        }
+      },
+      "CO": {
+        "n": 70,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 210,
+          "per_run_den": 70,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6666666666666666,
+          "num": 36,
+          "den": 54,
+          "per_run_den": 18,
+          "range": [
+            12,
+            12
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 63,
+          "den": 63,
+          "per_run_den": 21,
+          "range": [
+            21,
+            21
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.9142857142857143,
+          "num": 192,
+          "den": 210,
+          "per_run_den": 70,
+          "range": [
+            64,
+            64
+          ],
+          "runs": 3
+        }
+      },
+      "MX": {
+        "n": 53,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6785714285714286,
+          "num": 57,
+          "den": 84,
+          "per_run_den": 28,
+          "range": [
+            19,
+            19
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 60,
+          "den": 60,
+          "per_run_den": 20,
+          "range": [
+            20,
+            20
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8301886792452831,
+          "num": 132,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            44,
+            44
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "by_segment": {
+      "Basic": {
+        "n": 76,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 228,
+          "per_run_den": 76,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6916666666666667,
+          "num": 83,
+          "den": 120,
+          "per_run_den": 40,
+          "range": [
+            27,
+            28
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 81,
+          "den": 81,
+          "per_run_den": 27,
+          "range": [
+            27,
+            27
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8508771929824561,
+          "num": 194,
+          "den": 228,
+          "per_run_den": 76,
+          "range": [
+            64,
+            65
+          ],
+          "runs": 3
+        }
+      },
+      "Plus": {
+        "n": 17,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 51,
+          "per_run_den": 17,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.8333333333333334,
+          "num": 15,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            5,
+            5
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 30,
+          "den": 30,
+          "per_run_den": 10,
+          "range": [
+            10,
+            10
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.9411764705882353,
+          "num": 48,
+          "den": 51,
+          "per_run_den": 17,
+          "range": [
+            16,
+            16
+          ],
+          "runs": 3
+        }
+      },
+      "Premium": {
+        "n": 53,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.5,
+          "num": 18,
+          "den": 36,
+          "per_run_den": 12,
+          "range": [
+            6,
+            6
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 36,
+          "den": 36,
+          "per_run_den": 12,
+          "range": [
+            12,
+            12
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8867924528301887,
+          "num": 141,
+          "den": 159,
+          "per_run_den": 53,
+          "range": [
+            47,
+            47
+          ],
+          "runs": 3
+        }
+      },
+      "Student": {
+        "n": 6,
+        "unsafe_outcomes": {
+          "rate": 0.0,
+          "num": 0,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            0,
+            0
+          ],
+          "runs": 3
+        },
+        "safe_automated_resolution": {
+          "rate": 0.6666666666666666,
+          "num": 6,
+          "den": 9,
+          "per_run_den": 3,
+          "range": [
+            2,
+            2
+          ],
+          "runs": 3
+        },
+        "escalation_recall": {
+          "rate": 1.0,
+          "num": 3,
+          "den": 3,
+          "per_run_den": 1,
+          "range": [
+            1,
+            1
+          ],
+          "runs": 3
+        },
+        "outcome_acceptable": {
+          "rate": 0.8333333333333334,
+          "num": 15,
+          "den": 18,
+          "per_run_den": 6,
+          "range": [
+            5,
+            5
+          ],
+          "runs": 3
+        }
+      }
+    }
+  }
+}

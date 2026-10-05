@@ -9,35 +9,66 @@ Factored AI & Data Hackathon 2026 · equipo VerifiCargo
 
 ## El resultado en una tabla
 
-**eval-v2**: 152 conversaciones nuevas (transacciones, redacción, países y
-conductas que el sistema no vio durante el desarrollo), commiteadas con su hash
-y el tag [`eval-v2`](../../tree/eval-v2) **antes** de correr cualquiera de los
-dos sistemas. Etiquetas derivadas de la política escrita; usuario simulado con
-guion. Mismo modelo (qwen3:1.7b, local) para los dos.
+**eval-v3**: 152 conversaciones creadas **después** de congelar sistema,
+prompts y evaluador (tags [`system-v6-frozen`](../../tree/system-v6-frozen) y
+[`eval-v3`](../../tree/eval-v3)), con transacciones y redacción que ninguna
+versión vio. Cada sistema corrió **3 veces** sobre los mismos casos, con el
+mismo modelo (qwen3:1.7b, local), para medir cuánto varía el LLM. Cada celda: la
+tasa de las 3 corridas juntas y, entre paréntesis, el rango por corrida.
 
 | | Baseline: el LLM decide con la política en el prompt | **VerifiCargo** |
 |---|---:|---:|
-| **Resultados inseguros** (acciones, escalamientos y afirmaciones falsas) | **30,3% (46/152)** | **0% (0/152)** |
-| Afirmaciones falsas al cliente | 4,6% (7/152) | 0% (0/152) |
-| **Escalamientos omitidos** (sin ticket verificado) | **39,2% (20/51)** | **0% (0/51)** |
-| Resolución segura · casos resolubles | 18,3% (11/60) | **75% (45/60)** |
-| Resolución segura · todos los casos en alcance | 7,7% (11/142) | **31,7% (45/142)** |
-| Resoluciones incompletas | 12,5% (7/56) | 0% (0/45) |
-| Escalamientos innecesarios | 47,3% (43/91) | 20,9% (19/91) |
-| Resultado aceptable (y no inseguro) | 59,9% (91/152) | 90,1% (137/152) |
-| Fallas inyectadas que se activaron | 80% (8/10) | 100% (10/10) |
+| **Resultados inseguros detectados** (acciones, escalamientos y afirmaciones falsas) | 24,6% (36–39 de 152 por corrida) | **0% (0 de 152 en cada corrida)** |
+| Afirmaciones falsas al cliente | 5,7% (8–9 de 152 por corrida) | 0% (0 de 152 en cada corrida) |
+| **Escalamientos omitidos** (sin ticket verificado) | 22% (11 de 50 en cada corrida) | **0% (0 de 50 en cada corrida)** |
+| **Resolución segura · todos los casos en alcance** | 8% (11–12 de 142 por corrida) | **28,6% (40–41 de 142 por corrida)** |
+| Resolución segura · casos resolubles | 18,6% (11–12 de 61 por corrida) | 66,7% (40–41 de 61 por corrida) |
+| Resoluciones incompletas | 23,7% (11–13 de 53 por corrida) | 0% (0 de 41 en cada corrida) |
+| Escalamientos innecesarios | 46% (41–45 de 92 por corrida) | 26,1% (24 de 92 en cada corrida) |
+| Resultado aceptable (y no inseguro) | 68,6% (103–107 de 152 por corrida) | 87,3% (132–133 de 152 por corrida) |
+| Fallas inyectadas que se activaron | 76,7% (7–8 de 10 por corrida) | 100% (10 de 10 en cada corrida) |
 | Latencia por turno p50 / p95 | 2,7 s / 2,9 s | 2,2 s / 2,3 s |
+| Latencia por conversación completa p50 / p95 | 2,7 s / 2,9 s | 2,4 s / 6,6 s |
+| Turnos por conversación (media) | 1,00 | 2,65 |
 
+VerifiCargo: **0 resultados inseguros detectados en 152 casos, en cada una de las 3 corridas**, contra 36–39 del baseline. Se detectan con reglas
+deterministas sobre acciones, tickets y respuestas: es evidencia sobre estos
+casos, **no una garantía de seguridad**. La resolución que presentamos es
+**28,6% sobre todos los casos en alcance**, junto con
+66,7% sobre los casos resolubles: más de un tercio de los
+casos deben escalar a un humano y por definición no se resuelven solos.
+
+**Por idioma, país y segmento** (3 corridas juntas; muestras chicas, se
+informan con denominador y no como conclusión):
+
+| Corte | Casos por corrida | Inseguros: baseline | Inseguros: VerifiCargo | Resolución segura (resolubles): baseline | VerifiCargo |
+|---|---:|---:|---:|---:|---:|
+| Idioma: es | 77 | 30,7% (71/231) | 0% (0/231) | 21,1% (19/90) | 65,6% (59/90) |
+| Idioma: pt | 75 | 18,2% (41/225) | 0% (0/225) | 16,1% (15/93) | 67,7% (63/93) |
+| País: AR | 29 | 18,4% (16/87) | 0% (0/87) | 20% (9/45) | 64,4% (29/45) |
+| País: CO | 70 | 22,4% (47/210) | 0% (0/210) | 22,2% (12/54) | 66,7% (36/54) |
+| País: MX | 53 | 30,8% (49/159) | 0% (0/159) | 15,5% (13/84) | 67,9% (57/84) |
+| Segmento: Basic | 76 | 31,6% (72/228) | 0% (0/228) | 18,3% (22/120) | 69,2% (83/120) |
+| Segmento: Plus | 17 | 29,4% (15/51) | 0% (0/51) | 0% (0/18) | 83,3% (15/18) |
+| Segmento: Premium | 53 | 15,7% (25/159) | 0% (0/159) | 33,3% (12/36) | 50% (18/36) |
+| Segmento: Student | 6 | 0% (0/18) | 0% (0/18) | 0% (0/9) | 66,7% (6/9) |
+
+Los mismos sistemas sobre los sets usados durante el desarrollo, con el mismo
+evaluador: **eval-v2** 0% (0/152) inseguros y
+75% (45/60) de resolución segura en
+VerifiCargo, contra 30,3% (46/152) y
+18,3% (11/60) del baseline; **eval-v1**
+0% (0/159) contra 27% (43/159).
 Medición offline sobre casos escritos por el equipo: **no es una mejora medida
-en producción**. "En alcance" excluye las preguntas fuera de alcance; incluye
-los casos que deben escalar, que por definición no se resuelven solos.
+en producción**.
 
 **Antes había otra tabla, y no era válida.** Cuatro revisiones externas (4 y
 5 de octubre) encontraron que el evaluador contaba como logros cosas que no
 comprobaba —fallas que no se activaban, escalamientos sin ticket, respuestas
-falsas que contaban como seguras, respuestas válidas castigadas— y que el baseline corría con condiciones
-distintas. El 82,4% de resolución segura que se publicó salía de ahí. Qué
-estaba mal, qué se corrigió y cómo se volvió a medir: [Evaluación](#evaluación).
+falsas que contaban como seguras, respuestas válidas castigadas— y que el
+baseline corría con condiciones distintas. El 82,4% de resolución segura que se
+publicó salía de ahí. Qué estaba mal, qué se corrigió y cómo se volvió a medir:
+[Evaluación](#evaluación).
 
 ---
 
@@ -193,7 +224,7 @@ que motivó D-10, confirmada.
    (reportes `v6r`): la recalificación es exacta (con el detector anterior
    reproduce v6 sin diferencias).
 
-**Resultado sobre eval-v2** (la tabla de arriba). Por bloque, VerifiCargo:
+**Resultado sobre eval-v2** (usado durante el desarrollo de v6; la tabla de arriba es eval-v3). Por bloque, VerifiCargo:
 
 - **Disputas**: 64 de 64 resueltas de forma segura o
   escaladas con ticket, 0 inseguras. Con el modelo caído, resuelve con reglas.
@@ -269,7 +300,7 @@ docker compose up --build                   # sin modelo
 docker compose --profile llm up --build     # con Ollama + qwen3:1.7b
 ```
 
-Otros comandos: `make test` (354 tests), `make train` (clasificador),
+Otros comandos: `make test` (359 tests), `make train` (clasificador),
 `make eval` (sistema contra baseline; requiere Ollama). Para una corrida
 puntual: `uv run python eval/runner.py --system proposed --cases v2 --tag v5`.
 
@@ -292,6 +323,41 @@ Consola del agente humano: código de acceso `agente-demo-2026`
 
 ---
 
+## Operación: frescura, trazabilidad, capacidad y retención
+
+**Frescura.** El prototipo trabaja sobre una foto de los datos: su "hoy" es la
+última fecha con datos, 2026-06-18. La carga incremental
+([pipeline/incremental.py](pipeline/incremental.py)) procesa por manifiesto de
+archivos, no por fecha, así que no pierde llegadas tardías (lo prueba
+`tests/test_incremental.py`). Política propuesta para producción, **no
+implementada**: transacciones cada hora y quejas cada día; si el último lote
+de transacciones tiene más de 24 horas, el asistente no abre disputas
+automáticamente y deriva a un humano.
+
+**Trazabilidad.** [docs/data_manifest.json](docs/data_manifest.json) registra,
+para cada artefacto de silver y gold, hash, filas, columnas y rango de fechas,
+junto con el commit. `tests/test_data_manifest.py` falla si los datos en disco
+cambian: los eval sets congelados siempre corresponden a los datos con los que
+se construyeron. (`docs/build_manifest.json`, de silver, se escribió antes del
+primer commit y por eso dice "no-commit"; el manifiesto nuevo lo reemplaza.)
+
+**Capacidad, medida en una laptop.** El cuello de botella es el LLM local: un
+turno que lo usa tarda unos 2,2 s (p50) y una conversación completa la latencia
+de la tabla de evaluación. El resto escala: 200 requests simultáneos en 32 hilos
+respondieron 200/200 (`tests/test_concurrency.py`), y el clasificador corre en
+milisegundos en CPU. Como orden de magnitud, el banco del dataset recibe unas
+4.120 disputas al año por teléfono, unas 11 por día: una sola instancia sobra.
+Con más volumen, el LLM se escala aparte (o se reemplaza por una API).
+
+**Retención.** La conversación vive en memoria lo que dura su token (15
+minutos). El paquete de handoff no lleva transcript, el cliente va como
+referencia con hash y los números de tarjeta se ocultan. El log de auditoría
+(`warehouse/audit_log.jsonl`) guarda acciones, no razonamiento del modelo. Los
+plazos de retención los fijaría Compliance por país; el prototipo no borra
+nada y lo declara.
+
+---
+
 ## Mapa del repo
 
 ```
@@ -302,7 +368,7 @@ ml/           clasificador de intención y corpus traducido
 policy/       dispute_policy.yaml — reglas con ID y procedencia
 eval/         eval sets congelados (v1, v2), runner, reportes
 docs/         DECISIONS · EDA_FINDINGS · experiments · limitations · intent_catalog
-tests/        354 tests, incluidos los del evaluador y de concurrencia
+tests/        359 tests, incluidos los del evaluador y de concurrencia
 ```
 
 Decisiones de diseño y su porqué: [docs/DECISIONS.md](docs/DECISIONS.md).

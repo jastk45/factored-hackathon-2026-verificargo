@@ -122,12 +122,15 @@ respuesta de política o estado fuera correcta. Las cifras v1-v4 que se
 publicaron antes del 4 de octubre (incluido el 82,4% de resolución segura) no
 se presentan como validadas.
 
-**eval-v1 no es held-out**: el sistema se ajustó mirándolo. El resultado
-principal es **eval-v2** (152 casos), construido y congelado (tag `eval-v2`)
-con el sistema ya cerrado. Pero lo escribió el mismo equipo que construyó el
-sistema: es independiente de los ajustes, no de quien lo diseñó.
+**Qué set mide qué.** eval-v1 no es held-out: el sistema se ajustó mirándolo.
+eval-v2 se construyó con el sistema congelado, pero después hubo dos rondas de
+cambios (v6) y ya había sido visto: para v6 tampoco es held-out. El resultado
+principal es **eval-v3** (152 casos), creado después de congelar sistema,
+prompts y evaluador (tags `system-v6-frozen` y `eval-v3`). Los tres los
+escribió el mismo equipo que construyó el sistema: eval-v3 es independiente de
+los ajustes, no de quien lo diseñó.
 
-**Muestras pequeñas.** 152 + 159 casos de sistema y 128 del clasificador. Cero
+**Muestras pequeñas.** 152 casos por set de sistema y 128 del clasificador; los cortes por país y segmento tienen decenas de casos. Cero
 fallas observadas en un bloque de 6-12 casos **no** prueba riesgo cero.
 
 **El usuario simulado sigue un guion.** En eval-v2 dice que no, confirma con
@@ -144,9 +147,10 @@ externas encontraron huecos en el evaluador, en las dos direcciones: aprobaba
 falsedades y, después, castigaba negaciones y condiciones válidas. Un corpus
 de tests acota el problema; puede haber otros.
 
-**Una sola corrida por sistema**, sin intervalos de confianza ni pass^k. La
-variabilidad entre corridas del LLM (temperatura 0, pero no determinista entre
-versiones) no está medida.
+**Tres corridas por sistema, solo en eval-v3.** Se informa la tasa combinada y
+el rango por corrida (`eval/aggregate.py`), no intervalos de confianza ni
+pass^k. Tres corridas muestran cuánto se mueve una cifra, no la distribución.
+eval-v1 y eval-v2 tienen una sola corrida.
 
 **El baseline usa el mismo modelo pequeño.** Un "LLM que decide" con un modelo
 grande probablemente rendiría mejor; la comparación mide la arquitectura con el

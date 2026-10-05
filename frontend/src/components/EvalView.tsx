@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { api, type EvalData, type Scorecard } from "@/lib/api"
+import { api, type Combined, type EvalData, type RunSummary, type Scorecard } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 // [clave del scorecard, etiqueta, ¿una cifra mayor es mejor?]
@@ -60,6 +60,101 @@ function ScoreTable({ baseline, proposed }: { baseline?: Scorecard; proposed?: S
   )
 }
 
+const V3_ROWS: [string, string][] = [
+  ["unsafe_outcomes", "Resultados inseguros detectados"],
+  ["false_statements", "Afirmaciones falsas al cliente"],
+  ["missed_escalations", "Escalamientos omitidos (sin ticket verificado)"],
+  ["safe_automated_resolution_in_scope", "Resolución segura · todos los casos en alcance"],
+  ["safe_automated_resolution", "Resolución segura · casos resolubles"],
+  ["wrong_resolutions", "Resoluciones incompletas"],
+  ["unnecessary_escalations", "Escalamientos innecesarios"],
+  ["outcome_acceptable", "Resultado aceptable (y no inseguro)"],
+  ["faults_activated", "Fallas inyectadas que se activaron"],
+]
+
+const pct1 = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString("es-AR")}%`
+
+function combined(m?: Combined) {
+  if (!m || m.rate == null || !m.range) return "—"
+  const [lo, hi] = m.range
+  const spread = lo === hi ? `${lo} de ${m.per_run_den} en cada corrida` : `${lo}–${hi} de ${m.per_run_den} por corrida`
+  return `${pct1(m.rate)} (${spread})`
+}
+
+const seconds = (ms?: number) => (ms == null ? "—" : `${(ms / 1000).toLocaleString("es-AR", { maximumFractionDigits: 1 })} s`)
+
+function V3Table({ baseline, proposed }: { baseline?: RunSummary; proposed?: RunSummary }) {
+  if (!proposed) return <p className="text-sm text-muted-foreground">Sin reporte.</p>
+  const cuts: [string, "by_language" | "by_country" | "by_segment"][] = [
+    ["Idioma", "by_language"], ["País", "by_country"], ["Segmento", "by_segment"],
+  ]
+  return (
+    <div className="space-y-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Métrica</TableHead>
+            <TableHead>Baseline: el LLM decide</TableHead>
+            <TableHead>VerifiCargo v6</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {V3_ROWS.map(([key, label]) => (
+            <TableRow key={key}>
+              <TableCell className="font-medium">{label}</TableCell>
+              <TableCell className="font-mono text-xs">{combined(baseline?.metrics[key])}</TableCell>
+              <TableCell className={cn("font-mono text-xs", key === "unsafe_outcomes" && "font-semibold")}>
+                {combined(proposed.metrics[key])}
+              </TableCell>
+            </TableRow>
+          ))}
+          {[["latency_turn", "Latencia por turno p50 / p95"], ["latency_case", "Latencia por conversación p50 / p95"]].map(
+            ([key, label]) => (
+              <TableRow key={key}>
+                <TableCell className="font-medium">{label}</TableCell>
+                {[baseline, proposed].map((sys, i) => (
+                  <TableCell key={i} className="font-mono text-xs">
+                    {seconds(sys?.latency[`${key}_p50_ms`])} / {seconds(sys?.latency[`${key}_p95_ms`])}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ),
+          )}
+        </TableBody>
+      </Table>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Corte (3 corridas juntas)</TableHead>
+            <TableHead>Casos</TableHead>
+            <TableHead>Inseguros · baseline</TableHead>
+            <TableHead>Inseguros · VerifiCargo</TableHead>
+            <TableHead>Resolución segura · VerifiCargo</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {cuts.flatMap(([label, key]) =>
+            Object.entries(proposed[key] ?? {}).map(([group, m]) => {
+              const b = baseline?.[key]?.[group]
+              const rate = (x?: Combined | number) =>
+                x && typeof x !== "number" && x.rate != null ? `${pct1(x.rate)} (${x.num}/${x.den})` : "—"
+              return (
+                <TableRow key={`${key}-${group}`}>
+                  <TableCell className="font-medium">{label}: {group}</TableCell>
+                  <TableCell>{String(m.n ?? "—")}</TableCell>
+                  <TableCell className="font-mono text-xs">{rate(b?.unsafe_outcomes)}</TableCell>
+                  <TableCell className="font-mono text-xs">{rate(m.unsafe_outcomes)}</TableCell>
+                  <TableCell className="font-mono text-xs">{rate(m.safe_automated_resolution)}</TableCell>
+                </TableRow>
+              )
+            }),
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
 export function EvalView() {
   const [data, setData] = useState<EvalData | null>(null)
   useEffect(() => {
@@ -72,7 +167,21 @@ export function EvalView() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>eval-v2 · casos nuevos, congelados antes de correr (tag eval-v2)</CardTitle>
+          <CardTitle>eval-v3 · la versión final sobre casos nuevos, 3 corridas por sistema</CardTitle>
+          <CardDescription>
+            152 conversaciones creadas después de congelar sistema, prompts y evaluador (tags system-v6-frozen y eval-v3).
+            Cada celda: la tasa de las 3 corridas juntas y, entre paréntesis, el rango por corrida. Detectado con reglas
+            deterministas: evidencia sobre estos casos, no una garantía de seguridad.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <V3Table {...(data.v3 ?? {})} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">eval-v2 · casos nuevos para v5; ya vistos durante el desarrollo de v6</CardTitle>
           <CardDescription>
             Transacciones, redacción y conductas nuevas (negativas, cambio de tema, fallas que se comprueba que se
             activan), con el sistema ya congelado. Mismo modelo (qwen3:1.7b) y mismo usuario simulado para los dos.

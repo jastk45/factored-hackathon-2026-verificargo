@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-10-05T06:44:47+00:00",
+  "git_commit": "ab24957",
+  "reference_date": "2026-06-18",
+  "note": "Artefactos construidos el 27-28 sep (antes del primer commit). Se registran y verifican; no se reconstruyen encima de los eval sets congelados.",
+  "artifacts": {
+    "gold/txn_lookup.parquet": {
+      "sha256": "9a14a155c4268dd40a6f868359b7a675351b510a48a17ae5ab09d82e4e174aa1",
+      "bytes": 219718773,
+      "rows": 4425008,
+      "columns": 20,
+      "modified": "2026-09-28T00:54:53+00:00",
+      "date_range": {
+        "column": "transaction_date",
+        "min": "2023-06-17",
+        "max": "2026-06-18"
+      }
+    },
+    "gold/customer_360_min.parquet": {
+      "sha256": "2f8d22ec09bfdd2f466f06e04d929f37620cde97d64961b5578591e59547a829",
+      "bytes": 3102646,
+      "rows": 150000,
+      "columns": 10,
+      "modified": "2026-09-28T00:54:54+00:00",
+      "date_range": {
+        "column": "customer_since",
+        "min": "2018-06-18",
+        "max": "2026-06-17"
+      }
+    },
+    "gold/dispute_cases.parquet": {
+      "sha256": "f345d7de91a08331a6c5e46c05e65a60e536ed07b5913674cc49af0dd23fc668",
+      "bytes": 1148767,
+      "rows": 24097,
+      "columns": 12,
+      "modified": "2026-09-28T00:54:54+00:00",
+      "date_range": {
+        "column": "created_at",
+        "min": "2023-06-17 13:19:54",
+        "max": "2026-06-18 06:07:57"
+      }
+    },
+    "silver/customers.parquet": {
+      "sha256": "4d7a27447efcdc7034eaef256be71c25adc7ee038df3d7f8850a4e3cfe8d6138",
+      "bytes": 16711750,
+      "rows": 150000,
+      "columns": 27,
+      "modified": "2026-09-28T00:51:41+00:00"
+    },
+    "silver/products.parquet": {
+      "sha256": "37d1c55f1a96a469795d847678c77b11e32e4e65884818128b0eaa45ae42365a",
+      "bytes": 27640667,
+      "rows": 400000,
+      "columns": 17,
+      "modified": "2026-09-28T00:51:43+00:00"
+    },
+    "silver/transactions.parquet": {
+      "sha256": "e91bf8f947a588bd09645a17e9c199ca7e23f35c046790cd82a5516f2fbc0e04",
+      "bytes": 355917777,
+      "rows": 4425008,
+      "columns": 26,
+      "modified": "2026-09-28T00:54:12+00:00",
+      "date_range": {
+        "column": "transaction_date",
+        "min": "2023-06-17 06:01:30",
+        "max": "2026-06-18 05:59:41"
+      }
+    },
+    "silver/complaints.parquet": {
+      "sha256": "3a8cc0e211301a2549eceabe778df3efe495f0a041b799219fc3c36a34ca3ebb",
+      "bytes": 5082734,
+      "rows": 66055,
+      "columns": 30,
+      "modified": "2026-09-28T00:54:02+00:00"
+    }
+  }
+}

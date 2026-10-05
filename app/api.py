@@ -426,6 +426,10 @@ def eval_reports() -> dict[str, Any]:
             if path.exists():
                 data = json.loads(path.read_text(encoding="utf-8"))
                 out.setdefault(cases, {})[system] = data["scorecard"]
+    # eval-v3: casos creados después de congelar; 3 corridas por sistema.
+    summary = reports / "summary_v3_v6.json"
+    if summary.exists():
+        out["v3"] = json.loads(summary.read_text(encoding="utf-8"))
     path = reports / "intent_classifier.json"
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))

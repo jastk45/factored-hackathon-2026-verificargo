@@ -72,5 +72,6 @@
     "daily_rate": 1986422,
     "source": 572,
     "unavailable": 35
-  }
+  },
+  "git_commit_note": "Escrito por pipeline/silver.py el 28 de septiembre, antes del primer commit. La trazabilidad vigente de los artefactos está en docs/data_manifest.json."
 }

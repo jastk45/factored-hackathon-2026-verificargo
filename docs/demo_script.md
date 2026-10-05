@@ -58,12 +58,13 @@ Agente humano)
 **1:55 – 2:35 · La evidencia** (pestaña Evaluación)
 
 > "Cuatro revisiones externas nos mostraron que nuestro evaluador aprobaba cosas
-> que no comprobaba, incluso respuestas falsas. Lo corregimos, congelamos el
-> sistema y escribimos 152 casos nuevos, commiteados antes de correr. Contra
-> un baseline donde el mismo LLM decide con la política completa en el
-> prompt: 46 resultados inseguros contra 0;
-> 20 escalamientos omitidos contra 0. Y una
-> respuesta falsa al cliente cuenta como insegura."
+> que no comprobaba. Lo corregimos, congelamos el sistema y recién entonces
+> escribimos 152 casos nuevos. Corrimos cada sistema 3 veces:
+> VerifiCargo, 0 resultados inseguros detectados en cada corrida;
+> el baseline, donde el mismo LLM decide con la política en el prompt, entre
+> 36 y 39. Resolvemos solo el
+> 28,6% de todos los casos: el resto se pregunta o pasa a
+> una persona, y eso es lo que tiene que pasar."
 
 > "Lo débil también está medido: las preguntas de plazos y de estado, el
 > clasificador las escala en vez de responderlas."

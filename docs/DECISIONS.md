@@ -621,3 +621,25 @@ en el caso como afirmación del cliente, sin verificar y con números de tarjeta
 redactados, y el caso vuelve a pendientes. Solo la conversación que originó el
 caso puede verla y responderla, y solo con la sesión vigente (la cuarta
 revisión encontró que un token vencido podía hacerlo).
+
+---
+
+## D-22 · La versión final se mide sobre casos nuevos y con repeticiones
+
+**Fecha:** 5 oct 2026 · **Estado:** activa
+
+Una revisión contra la rúbrica señaló que v6 ya había visto eval-v2, que una
+sola corrida no mide la variación del LLM y que faltaban los cortes por
+segmento. Orden seguido, verificable en git:
+
+1. Cortes por país y segmento en el evaluador.
+2. Congelado de sistema, prompts y evaluador: tag `system-v6-frozen`.
+3. eval-v3 generado **después**, con transacciones y redacción nuevas:
+   tag `eval-v3`, con su hash.
+4. Tres corridas de cada sistema sobre eval-v3; `eval/aggregate.py` informa
+   la tasa combinada y el rango por corrida.
+
+**Cómo se presenta.** "0 resultados inseguros detectados en 152 casos" (si
+se mantiene en las tres corridas), nunca "seguro": se detecta con reglas
+deterministas. La resolución se informa sobre todos los casos en alcance, con
+la de los resolubles al lado.

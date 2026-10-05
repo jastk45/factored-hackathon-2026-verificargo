@@ -164,7 +164,7 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 - [x] **P0** `[EVAL]` Baseline de sistema: "LLM ingenuo con todas las herramientas y la política en el prompt". — *Hecho: corre sobre el mismo eval set.* **→ eval/runner.py, NaiveAgent**
 - [x] **P0** `[EVAL]` Corrida completa: sistema propuesto vs baseline sobre el mismo workload. — *Hecho: `eval/reports/scorecard_v1.md` generado.* **→ baseline + v1 (pre-registrada) + v2 + v3 en eval/reports/**
 - [x] **P0** `[EVAL]` Scorecard con **denominadores** en cada fila: safe automated resolution, containment, escalation quality (transferencias omitidas y innecesarias), unsafe outcomes (por tipo), latencia p50/p95, costo por caso y por resolución exitosa. — *Hecho: tabla completa, sin celdas vacías; "no definido" donde corresponda.* **→ docs/experiments.md (E-06) y vista Evaluación**
-- [x] **P1** `[EVAL]` Cortes por idioma (es/pt), país y segmento, con nota de muestra pequeña. — *Hecho: tabla segmentada.* **→ by_language en cada reporte; segmento/país no (muestra chica)**
+- [x] **P1** `[EVAL]` Cortes por idioma (es/pt), país y segmento, con nota de muestra pequeña. — *Hecho: tabla segmentada.* **→ by_language, by_country y by_segment en los reportes de eval-v3 (agregados el 5 oct; antes solo había idioma)**
 - [~] **P1** `[SHIP]` Deploy accesible + `docker compose up` reproducible. **→ make serve probado; Dockerfile multi-etapa escrito, SIN PROBAR (daemon de Docker apagado)** **Cloud no es obligatorio** (confirmado por los organizadores): si es local, documentar la ruta a producción. — *Hecho: un tercero puede levantarlo siguiendo el README.*
 
 ---
@@ -200,6 +200,17 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 
 - [x] **P0** `[EVAL]` El detector castigaba negaciones y condiciones: corregido, con un corpus de respuestas válidas redactadas de otras formas. Reportes v6 recalificados (v6r) con las mismas conversaciones. **→ E-09**
 - [x] **P0** `[AGENT]` Preguntas y respuestas con el agente validan la sesión (un token vencido daba 200).
+
+### Revisión contra la rúbrica (5 oct)
+
+- [x] **P0** `[EVAL]` Cortes por país y segmento en el evaluador; latencia por conversación en las tablas.
+- [x] **P0** `[EVAL]` Congelar sistema, prompts y evaluador (`system-v6-frozen`) y DESPUÉS crear eval-v3 (`eval-v3`). **→ D-22**
+- [x] **P0** `[EVAL]` Tres corridas de cada sistema sobre eval-v3; `eval/aggregate.py`; README, E-10, deck y vista de Evaluación. — *Hecho: 0/152 inseguros en las 3 corridas contra 36–39 del baseline; resolución segura 28,6% en alcance.*
+- [x] **P1** `[DATA]` Manifiesto de trazabilidad con commit, hashes, filas y rangos de fechas; test que lo verifica. **→ docs/data_manifest.json**
+- [x] **P1** `[OPS]` Frescura, capacidad y retención concretadas en el README (sección Operación).
+- [x] **P1** `[SHIP]` Revisión visual de las 6 slides; repo público verificado.
+- [ ] **P0** `[SHIP]` Link para que los jueces usen la app (túnel temporal o Docker): requiere decisión del equipo.
+- [ ] **P0** `[SHIP]` Video, revisión final de slides y email.
 
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
 - [ ] **P0** `[SHIP]` **ENVIAR a hackathon.admin@factored.ai**: link del repo, link del deploy, slides, video. — *Hecho: email enviado con acuse.*
