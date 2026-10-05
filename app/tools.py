@@ -17,6 +17,7 @@ contra que el modelo (o un texto malicioso) elija a quién consultar.
 from __future__ import annotations
 
 import json
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -34,6 +35,12 @@ AUDIT_LOG = REPO_ROOT / "warehouse" / "audit_log.jsonl"
 
 # Última fecha con datos: el "hoy" del sistema.
 TODAY = date(2026, 6, 18)
+
+# El almacén de disputas puede ser compartido por varios hilos (la API): la
+# consulta "¿ya existe?" y la escritura van bajo el mismo lock, y también las
+# lecturas, porque recorrer un dict mientras otro hilo inserta falla.
+_STORE_LOCK = threading.RLock()
+_AUDIT_LOCK = threading.Lock()
 
 COUNTRY_CODES = {"México": "MX", "Mexico": "MX", "Colombia": "CO", "Argentina": "AR"}
 
@@ -97,7 +104,6 @@ def _audit(action: str, session: Session, detail: dict[str, Any]) -> None:
     El reto lo dice expresamente: "hidden model chain-of-thought is not an
     audit artifact".
     """
-    AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
     entry = {
         "at": datetime.now().isoformat(timespec="seconds"),
         "action": action,
@@ -105,8 +111,11 @@ def _audit(action: str, session: Session, detail: dict[str, Any]) -> None:
         "auth_level": session.auth_level.value,
         **detail,
     }
-    with AUDIT_LOG.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
+    line = json.dumps(entry, ensure_ascii=False, default=str) + "\n"
+    with _AUDIT_LOCK:
+        AUDIT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with AUDIT_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(line)
 
 
 class Toolbox:
@@ -294,12 +303,13 @@ class Toolbox:
             rows = [{"case_id": r[0], "created_at": r[1], "status": r[2],
                      "subcategory": r[3], "source": "gold.dispute_cases"} for r in found]
 
-        session_rows = [
-            {"case_id": d["case_id"], "created_at": d["created_at"].date(),
-             "status": d["status"], "subcategory": d["reason"], "source": "sesión"}
-            for d in self._disputes.values()
-            if d["customer_id"] == self.session.customer_id
-        ]
+        with _STORE_LOCK:
+            session_rows = [
+                {"case_id": d["case_id"], "created_at": d["created_at"].date(),
+                 "status": d["status"], "subcategory": d["reason"], "source": "sesión"}
+                for d in self._disputes.values()
+                if d["customer_id"] == self.session.customer_id
+            ]
         disputes = (session_rows + rows)[:limit]
 
         evidence = [
@@ -314,20 +324,22 @@ class Toolbox:
     def count_recent_unrecognized(self, days: int = 30) -> ToolResult:
         """Disputas abiertas por el cliente en los últimos N días (para ESC-04)."""
         cutoff = TODAY - timedelta(days=days)
-        n = sum(
-            1 for d in self._disputes.values()
-            if d["customer_id"] == self.session.customer_id
-            and d["created_at"].date() >= cutoff
-        )
+        with _STORE_LOCK:
+            n = sum(
+                1 for d in self._disputes.values()
+                if d["customer_id"] == self.session.customer_id
+                and d["created_at"].date() >= cutoff
+            )
         return ToolResult(ok=True, verified=True, data={"count": n})
 
     def open_dispute_for(self, transaction_id: str) -> ToolResult:
         """¿Ya hay una disputa abierta sobre esta transacción? (GATE-05)"""
-        existing = next(
-            (d for d in self._disputes.values()
-             if d["transaction_id"] == transaction_id
-             and d["customer_id"] == self.session.customer_id
-             and d["status"] == "Open"), None)
+        with _STORE_LOCK:
+            existing = next(
+                (d for d in self._disputes.values()
+                 if d["transaction_id"] == transaction_id
+                 and d["customer_id"] == self.session.customer_id
+                 and d["status"] == "Open"), None)
         if existing is None:
             return ToolResult(ok=True, verified=True, data={"case_id": None})
         return ToolResult(
@@ -352,32 +364,35 @@ class Toolbox:
         if not owned.ok:
             raise ToolError("No se puede disputar una transacción que no es tuya")
 
-        existing = self.open_dispute_for(transaction_id)
-        if existing.data["case_id"]:
-            # No es un fallo de verificación: la disputa existe y se comprobó.
-            return ToolResult(ok=False, verified=True,
-                              data={"existing_case_id": existing.data["case_id"]},
-                              evidence=existing.evidence,
-                              error=f"Ya existe la disputa {existing.data['case_id']}")
+        # Consultar, escribir y releer en un solo paso: dos conversaciones (o
+        # un agente y un cliente) no pueden abrir la misma disputa a la vez.
+        with _STORE_LOCK:
+            existing = self.open_dispute_for(transaction_id)
+            if existing.data["case_id"]:
+                # No es un fallo de verificación: la disputa existe y se comprobó.
+                return ToolResult(ok=False, verified=True,
+                                  data={"existing_case_id": existing.data["case_id"]},
+                                  evidence=existing.evidence,
+                                  error=f"Ya existe la disputa {existing.data['case_id']}")
 
-        case_id = _new_id("DSP")
-        self._disputes[case_id] = {
-            "case_id": case_id,
-            "customer_id": self.session.customer_id,
-            "transaction_id": transaction_id,
-            "reason": reason,
-            "status": "Open",
-            "created_at": datetime.now(),
-            "created_by": self.actor or "customer",
-        }
+            case_id = _new_id("DSP")
+            self._disputes[case_id] = {
+                "case_id": case_id,
+                "customer_id": self.session.customer_id,
+                "transaction_id": transaction_id,
+                "reason": reason,
+                "status": "Open",
+                "created_at": datetime.now(),
+                "created_by": self.actor or "customer",
+            }
 
-        # RE-LECTURA: no basta con haber escrito.
-        written = self._disputes.get(case_id)
-        verified = (
-            written is not None
-            and written["transaction_id"] == transaction_id
-            and written["customer_id"] == self.session.customer_id
-        )
+            # RE-LECTURA: no basta con haber escrito.
+            written = self._disputes.get(case_id)
+            verified = (
+                written is not None
+                and written["transaction_id"] == transaction_id
+                and written["customer_id"] == self.session.customer_id
+            )
 
         _audit("create_dispute_case", self.session,
                {"case_id": case_id, "transaction_id": transaction_id,

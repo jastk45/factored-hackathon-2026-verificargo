@@ -483,12 +483,18 @@ class Orchestrator:
             extracted = dict(context.get("fields", {}))
         else:
             try:
-                fresh = self.extractor.extract(message)
+                # La traza vuelve con el resultado: leer `extractor.last` después
+                # mezclaba la fuente de un request con la de otro en paralelo.
+                traced = getattr(self.extractor, "extract_with_trace", None)
+                if traced is not None:
+                    result = traced(message)
+                    fresh, turn.extraction_source = result.fields, result.source
+                else:
+                    fresh = self.extractor.extract(message)
             except Exception as exc:  # noqa: BLE001 - un fallo del LLM escala
                 turn.escalation_reasons.append(f"UNDERSTAND: el extractor falló ({exc})")
                 self._escalate(turn, box, {"reason": "extractor_failure"})
                 return finish(Outcome.ESCALATED, str(exc))
-            turn.extraction_source = getattr(getattr(self.extractor, "last", None), "source", None)
             # Contexto: los campos ya dados se conservan; los nuevos los pisan.
             extracted = dict(context.get("fields", {}))
             extracted.update({k: v for k, v in fresh.items()

@@ -220,6 +220,7 @@ reprodujeron antes de arreglarlos y tienen un test de regresión
 | Aprobar no ejecutaba nada; pedir información figuraba como resuelto | Aprobar abre y relee la disputa; pedir información deja el caso abierto |
 | País de la sesión fijo en "MX" | Sale del registro del cliente |
 | Una disputa repetida rompía con `KeyError` | GATE-05 informa la disputa existente |
+| Una sola conexión de DuckDB para todos los hilos: con 32 requests simultáneos fallaban 183 de 200 y algunos recibían datos de la consulta de otro | Un cursor por request y locks en disputas, cola y conversación ([tests/test_concurrency.py](tests/test_concurrency.py)) |
 
 Metodología, curvas y anomalías: [docs/experiments.md](docs/experiments.md).
 Limitaciones: [docs/limitations.md](docs/limitations.md).
@@ -248,7 +249,7 @@ docker compose up --build                   # sin modelo
 docker compose --profile llm up --build     # con Ollama + qwen3:1.7b
 ```
 
-Otros comandos: `make test` (294 tests), `make train` (clasificador),
+Otros comandos: `make test` (298 tests), `make train` (clasificador),
 `make eval` (sistema contra baseline; requiere Ollama). Para una corrida
 puntual: `uv run python eval/runner.py --system proposed --cases v2 --tag v5`.
 
@@ -281,7 +282,7 @@ ml/           clasificador de intención y corpus traducido
 policy/       dispute_policy.yaml — reglas con ID y procedencia
 eval/         eval sets congelados (v1, v2), runner, reportes
 docs/         DECISIONS · EDA_FINDINGS · experiments · limitations · intent_catalog
-tests/        294 tests, incluidos los del evaluador
+tests/        298 tests, incluidos los del evaluador y de concurrencia
 ```
 
 Decisiones de diseño y su porqué: [docs/DECISIONS.md](docs/DECISIONS.md).

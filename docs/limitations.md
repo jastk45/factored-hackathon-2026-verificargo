@@ -98,7 +98,11 @@ procedencia la cubriría, pero no hay un caso de evaluación que lo ejercite.
 el proceso. GATE-05 detecta duplicados entre conversaciones, y el caso de
 carrera (dos conversaciones abren la misma disputa) se maneja y se prueba, pero
 no hay transacciones ni bloqueos reales: con varios procesos haría falta el
-core bancario con idempotencia.
+core bancario con idempotencia. Dentro de un proceso, la API usa un cursor de
+DuckDB por request y locks en el almacén de disputas, la cola y cada
+conversación (`tests/test_concurrency.py`). Antes compartía una sola conexión:
+con 32 requests simultáneos fallaban 183 de 200 y algunos recibían el resultado
+de la consulta de otro hilo.
 
 **Lo que encontró una revisión externa (4 de octubre).** Path traversal en la
 ruta del frontend, una confirmación que aceptaba "Sí, pero no abras la disputa

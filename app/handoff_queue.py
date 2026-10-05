@@ -20,7 +20,9 @@ cola no se informa como encolado.
 from __future__ import annotations
 
 import json
+import os
 import re
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -33,6 +35,13 @@ DEAD_LETTER = QUEUE.with_name("handoff_deadletter.jsonl")
 
 OPEN_STATUSES = ("pending", "info_requested")
 CLOSED_STATUSES = ("approved", "rejected")
+
+
+# La API escribe y lee la cola desde varios hilos. Sin este lock, un hilo
+# leía el archivo mientras otro lo reescribía (JSON cortado) y dos decisiones
+# simultáneas se pisaban. Es un lock de proceso: con varios procesos, la cola
+# sería el CRM o una base con transacciones, no un archivo.
+_LOCK = threading.RLock()
 
 
 class QueueError(Exception):
@@ -120,12 +129,13 @@ def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[
     }
     record = {"status": "pending", "queued_at": datetime.now().isoformat(timespec="seconds"),
               "package": json.loads(package.model_dump_json()), "internal": internal}
-    QUEUE.parent.mkdir(parents=True, exist_ok=True)
-    with QUEUE.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with _LOCK:
+        QUEUE.parent.mkdir(parents=True, exist_ok=True)
+        with QUEUE.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    # RE-LECTURA: el caso tiene que estar en la cola, tal cual.
-    stored = get(ticket)
+        # RE-LECTURA: el caso tiene que estar en la cola, tal cual.
+        stored = get(ticket)
     if stored is None or stored["status"] != "pending":
         raise QueueError(f"el caso {ticket} no aparece en la cola al releerla")
     return record["package"]
@@ -133,18 +143,30 @@ def enqueue(turn, session, engine, customer_message: str | None = None) -> dict[
 
 def dead_letter(turn, reason: str) -> None:
     """Registra un escalamiento que no llegó a la cola, para recuperarlo a mano."""
-    DEAD_LETTER.parent.mkdir(parents=True, exist_ok=True)
-    with DEAD_LETTER.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({
-            "at": datetime.now().isoformat(timespec="seconds"), "reason": reason,
-            "escalation_reasons": turn.escalation_reasons, "error": turn.error,
-        }, ensure_ascii=False) + "\n")
+    line = json.dumps({
+        "at": datetime.now().isoformat(timespec="seconds"), "reason": reason,
+        "escalation_reasons": turn.escalation_reasons, "error": turn.error,
+    }, ensure_ascii=False) + "\n"
+    with _LOCK:
+        DEAD_LETTER.parent.mkdir(parents=True, exist_ok=True)
+        with DEAD_LETTER.open("a", encoding="utf-8") as fh:
+            fh.write(line)
 
 
 def _load() -> list[dict[str, Any]]:
-    if not QUEUE.exists():
-        return []
-    return [json.loads(l) for l in QUEUE.read_text(encoding="utf-8").splitlines() if l.strip()]
+    with _LOCK:
+        if not QUEUE.exists():
+            return []
+        text = QUEUE.read_text(encoding="utf-8")
+    return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+
+def _rewrite(rows: list[dict[str, Any]]) -> None:
+    """Reescribe la cola de forma atómica: nunca queda un archivo a medias."""
+    tmp = QUEUE.with_suffix(".tmp")
+    tmp.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
+                   encoding="utf-8")
+    os.replace(tmp, QUEUE)
 
 
 def get(handoff_id: str) -> dict[str, Any] | None:
@@ -174,25 +196,25 @@ def update(handoff_id: str, status: str, agent: str, note: str,
     """Cambia el estado de un caso abierto y lo relee. Devuelve el registro."""
     if status not in OPEN_STATUSES + CLOSED_STATUSES:
         raise QueueError(f"estado desconocido: {status}")
-    rows = _load()
-    target = next((r for r in rows if r["package"]["handoff_id"] == handoff_id), None)
-    if target is None:
-        raise QueueError(f"no existe el caso {handoff_id}")
-    if target["status"] not in OPEN_STATUSES:
-        raise QueueError(f"el caso {handoff_id} ya está cerrado ({target['status']})")
-    now = datetime.now().isoformat(timespec="seconds")
-    target["status"] = status
-    target["agent"] = agent
-    target["agent_note"] = note
-    target.setdefault("history", []).append({"at": now, "status": status, "agent": agent,
-                                             "note": note, "result": result})
-    if result is not None:
-        target["result"] = result
-    if status in CLOSED_STATUSES:
-        target["resolved_at"] = now
-    QUEUE.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n",
-                     encoding="utf-8")
-    stored = get(handoff_id)
+    with _LOCK:   # leer, modificar y reescribir sin que otro hilo se meta en el medio
+        rows = _load()
+        target = next((r for r in rows if r["package"]["handoff_id"] == handoff_id), None)
+        if target is None:
+            raise QueueError(f"no existe el caso {handoff_id}")
+        if target["status"] not in OPEN_STATUSES:
+            raise QueueError(f"el caso {handoff_id} ya está cerrado ({target['status']})")
+        now = datetime.now().isoformat(timespec="seconds")
+        target["status"] = status
+        target["agent"] = agent
+        target["agent_note"] = note
+        target.setdefault("history", []).append({"at": now, "status": status, "agent": agent,
+                                                 "note": note, "result": result})
+        if result is not None:
+            target["result"] = result
+        if status in CLOSED_STATUSES:
+            target["resolved_at"] = now
+        _rewrite(rows)
+        stored = get(handoff_id)
     if stored is None or stored["status"] != status:
         raise QueueError(f"el cambio de {handoff_id} no quedó registrado")
     return stored

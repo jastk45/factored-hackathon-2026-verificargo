@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -60,8 +61,15 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
                    allow_methods=["*"], allow_headers=["*"])
 
 ENGINE = PolicyEngine()
+# Una conexión de DuckDB NO se comparte entre hilos, y FastAPI atiende los
+# endpoints síncronos en un threadpool. Cada request abre su propio cursor
+# (`db()`). Con la conexión compartida, 32 requests simultáneos fallaban en su
+# mayoría y algunos devolvían el resultado de la consulta de otro hilo.
 CON = duckdb.connect()
 _ORCH: Orchestrator | None = None
+_ORCH_LOCK = threading.Lock()
+# Aprobar = ejecutar + cerrar el caso: una sola decisión a la vez.
+_RESOLVE_LOCK = threading.Lock()
 CONVERSATIONS: dict[str, dict[str, Any]] = {}
 # Almacén de disputas compartido por todas las conversaciones y por la consola
 # del agente: una disputa aprobada por un humano la ve el cliente, y GATE-05
@@ -69,11 +77,18 @@ CONVERSATIONS: dict[str, dict[str, Any]] = {}
 DISPUTES: dict[str, dict[str, Any]] = {}
 
 
+def db() -> duckdb.DuckDBPyConnection:
+    """Cursor propio para este request (se cierra con `with`)."""
+    return CON.cursor()
+
+
 def orchestrator() -> Orchestrator:
     global _ORCH
     if _ORCH is None:
-        from intent import IntentClassifier
-        _ORCH = Orchestrator(SlotExtractor(), ENGINE, classifier=IntentClassifier())
+        with _ORCH_LOCK:
+            if _ORCH is None:
+                from intent import IntentClassifier
+                _ORCH = Orchestrator(SlotExtractor(), ENGINE, classifier=IntentClassifier())
     return _ORCH
 
 
@@ -168,38 +183,44 @@ def new_conversation(body: NewConversation) -> dict[str, Any]:
     # El país sale del registro del cliente (dato confiable), no de un valor
     # fijo: los plazos y la procedencia regulatoria dependen de él.
     try:
-        country = customer_country(sc["customer"], CON)
+        with db() as cur:
+            country = customer_country(sc["customer"], cur)
     except LookupError as exc:
         raise HTTPException(422, str(exc)) from exc
     token = issue_token(sc["customer"], country, sc["lang"], AuthLevel.LOW)
-    CONVERSATIONS[cid] = {"token": token, "context": None, "box": None, "scenario": sc}
+    # El lock serializa los requests de UNA conversación (p. ej. un doble
+    # clic): el contexto del turno anterior tiene que estar escrito antes de
+    # leer el siguiente. Conversaciones distintas siguen en paralelo.
+    CONVERSATIONS[cid] = {"token": token, "context": None, "box": None, "scenario": sc,
+                          "lock": threading.Lock()}
     return {"conversation_id": cid, "scenario": sc, "session": session_info(token)}
 
 
 @app.post("/api/conversations/{cid}/messages")
 def send_message(cid: str, body: Message) -> dict[str, Any]:
     conv = conversation(cid)
+    with conv["lock"], db() as cur:
+        def factory(session):
+            if conv["box"] is None:
+                conv["box"] = Toolbox(session, cur, disputes=DISPUTES)
+            conv["box"].session = session
+            conv["box"].con = cur
+            return conv["box"]
 
-    def factory(session):
-        if conv["box"] is None:
-            conv["box"] = Toolbox(session, CON, disputes=DISPUTES)
-        conv["box"].session = session
-        return conv["box"]
+        # Lo último que el cliente escribió (no los botones ni las
+        # confirmaciones), para el resumen del handoff.
+        text = body.message.strip()
+        if not text.startswith("choice:") and len(text) > 15:
+            conv["last_customer_text"] = text
 
-    # Lo último que el cliente escribió (no los botones ni las confirmaciones),
-    # para el resumen del handoff.
-    text = body.message.strip()
-    if not text.startswith("choice:") and len(text) > 15:
-        conv["last_customer_text"] = text
+        turn = orchestrator().handle(conv["token"], body.message, factory,
+                                     context=conv["context"])
+        conv["context"] = turn.context_out or None
 
-    turn = orchestrator().handle(conv["token"], body.message, factory,
-                                 context=conv["context"])
-    conv["context"] = turn.context_out or None
-
-    handoff = None
-    if turn.outcome is Outcome.ESCALATED:
-        handoff = deliver_handoff(turn, conv)
-    return {"turn": turn_json(turn, handoff), "session": session_info(conv["token"])}
+        handoff = None
+        if turn.outcome is Outcome.ESCALATED:
+            handoff = deliver_handoff(turn, conv)
+        return {"turn": turn_json(turn, handoff), "session": session_info(conv["token"])}
 
 
 def deliver_handoff(turn: Turn, conv: dict[str, Any]) -> dict[str, Any]:
@@ -236,9 +257,11 @@ def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
         session = verify_token(conv["token"])
     except SessionError as exc:
         raise HTTPException(401, str(exc)) from exc
-    box = conv["box"] or Toolbox(session, CON, disputes=DISPUTES)
-    conv["box"] = box
-    rows = box.find_candidate_transactions(limit=min(limit, 20)).data["candidates"]
+    with conv["lock"], db() as cur:
+        box = conv["box"] or Toolbox(session, cur, disputes=DISPUTES)
+        box.con = cur
+        conv["box"] = box
+        rows = box.find_candidate_transactions(limit=min(limit, 20)).data["candidates"]
     return [{
         "transaction_id": r["transaction_id"],
         "date": str(r["transaction_date"]),
@@ -254,11 +277,12 @@ def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
 @app.post("/api/conversations/{cid}/step-up")
 def do_step_up(cid: str, body: StepUp) -> dict[str, Any]:
     conv = conversation(cid)
-    try:
-        conv["token"] = step_up(conv["token"], body.otp)
-    except SessionError as exc:
-        raise HTTPException(401, str(exc)) from exc
-    return {"session": session_info(conv["token"])}
+    with conv["lock"]:
+        try:
+            conv["token"] = step_up(conv["token"], body.otp)
+        except SessionError as exc:
+            raise HTTPException(401, str(exc)) from exc
+        return {"session": session_info(conv["token"])}
 
 
 # --- consola del agente humano ------------------------------------------
@@ -303,22 +327,27 @@ def list_handoffs(status: str = "pending",
 @app.post("/api/handoffs/{handoff_id}/resolve")
 def resolve_handoff(handoff_id: str, body: Resolution,
                     agent: AgentSession = Depends(require_agent)) -> dict[str, Any]:
-    """Registra la decisión del agente. Aprobar EJECUTA la disputa y la verifica."""
-    record = handoff_queue.get(handoff_id)
-    if record is None:
-        raise HTTPException(404, "caso inexistente")
-    if record["status"] not in handoff_queue.OPEN_STATUSES:
-        raise HTTPException(409, f"el caso ya está cerrado ({record['status']})")
+    """Registra la decisión del agente. Aprobar EJECUTA la disputa y la verifica.
 
-    result = None
-    if body.decision == "approved":
-        result = approve_dispute(record, agent)
-    try:
-        stored = handoff_queue.update(handoff_id, body.decision, agent.agent_id,
-                                      body.note, result)
-    except handoff_queue.QueueError as exc:
-        raise HTTPException(409, str(exc)) from exc
-    return {"ok": True, "item": public_item(stored)}
+    Leer el estado, ejecutar y cerrar van juntos: dos agentes que deciden el
+    mismo caso a la vez no pueden aprobarlo los dos.
+    """
+    with _RESOLVE_LOCK:
+        record = handoff_queue.get(handoff_id)
+        if record is None:
+            raise HTTPException(404, "caso inexistente")
+        if record["status"] not in handoff_queue.OPEN_STATUSES:
+            raise HTTPException(409, f"el caso ya está cerrado ({record['status']})")
+
+        result = None
+        if body.decision == "approved":
+            result = approve_dispute(record, agent)
+        try:
+            stored = handoff_queue.update(handoff_id, body.decision, agent.agent_id,
+                                          body.note, result)
+        except handoff_queue.QueueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"ok": True, "item": public_item(stored)}
 
 
 def approve_dispute(record: dict[str, Any], agent: AgentSession) -> dict[str, Any]:
@@ -331,12 +360,13 @@ def approve_dispute(record: dict[str, Any], agent: AgentSession) -> dict[str, An
                                  "pedí información al cliente o rechazá el caso.")
     session = verify_token(issue_token(internal["customer_id"], internal["country"],
                                        internal.get("language") or "es", AuthLevel.HIGH))
-    box = Toolbox(session, CON, disputes=DISPUTES, actor=f"agent:{agent.agent_id}")
-    try:
-        created = box.create_dispute_case(txn_id, internal.get("intent") or "unrecognized_charge",
-                                          confirmed=True)
-    except ToolError as exc:
-        raise HTTPException(409, str(exc)) from exc
+    with db() as cur:
+        box = Toolbox(session, cur, disputes=DISPUTES, actor=f"agent:{agent.agent_id}")
+        try:
+            created = box.create_dispute_case(
+                txn_id, internal.get("intent") or "unrecognized_charge", confirmed=True)
+        except ToolError as exc:
+            raise HTTPException(409, str(exc)) from exc
     if created.verified and created.data.get("existing_case_id"):
         return {"action": "none", "existing_case_id": created.data["existing_case_id"],
                 "verified": True, "evidence_ids": created.evidence_ids()}
