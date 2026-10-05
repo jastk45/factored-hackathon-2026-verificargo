@@ -144,6 +144,19 @@ ADVERSATIVE = re.compile(
     re.IGNORECASE,
 )
 MAX_CONFIRMATION_WORDS = 8
+# Un "sí" vale solo si TODAS sus palabras son de confirmación. Segunda revisión
+# externa: "Sí, corrige el monto a 500 USD" pasaba el filtro anterior (corto,
+# sin negación) y abría la disputa sobre el cargo viejo, ignorando la
+# corrección. Cualquier palabra fuera de esta lista convierte el mensaje en
+# una corrección: se vuelve a buscar y a pedir el sí.
+CONFIRMATION_WORDS = {
+    "si", "sí", "sim", "ok", "okay", "dale", "claro", "correcto", "correto", "exacto", "exato",
+    "isso", "eso", "ese", "esa", "es", "este", "esta", "esse", "essa", "esto", "isto", "mismo",
+    "confirmo", "confirma", "confirmado", "confirmar", "de", "acuerdo", "adelante", "hazlo",
+    "hacelo", "pode", "ser", "faça", "faca", "abrila", "ábrela", "abrela", "ábrala", "abrala",
+    "abra", "abre", "abrir", "procede", "proceda", "prossiga", "perfecto", "perfeito", "listo", "vale",
+    "por", "favor", "gracias", "obrigado", "obrigada", "bien", "bem", "certo", "bueno",
+}
 
 
 def read_confirmation(message: str) -> str | None:
@@ -155,8 +168,10 @@ def read_confirmation(message: str) -> str | None:
         return "no"
     if NEGATION.search(text):
         return "no"
+    words = re.findall(r"[\wáéíóúãõâêôçñü]+", text.lower())
     if (AFFIRMATIVE.match(text) and not ADVERSATIVE.search(text)
-            and len(text.split()) <= MAX_CONFIRMATION_WORDS):
+            and len(words) <= MAX_CONFIRMATION_WORDS
+            and all(w in CONFIRMATION_WORDS for w in words)):
         return "yes"
     return None
 

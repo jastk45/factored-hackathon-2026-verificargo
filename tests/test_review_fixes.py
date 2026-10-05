@@ -406,3 +406,32 @@ def test_if_the_queue_fails_the_customer_is_told_the_truth(client, monkeypatch) 
     assert turn["handoff"]["queued"] is False
     assert turn["reply"] == T["escalated_no_ticket"]["es"]
     assert handoff_queue.DEAD_LETTER.read_text(encoding="utf-8").count("\n") == 1
+
+
+# --- segunda revisión: una confirmación con datos nuevos no es un sí ------
+
+@pytest.mark.parametrize("text, expected", [
+    ("Sí, corrige el monto a 500 USD", None), ("Sí, era de 500", None),
+    ("Sim, mas o valor é 500", None), ("Sí, cambialo a la fecha 2026-05-02", None),
+    ("Sí, es ese", "yes"), ("Dale, abrila por favor", "yes"), ("Sim, pode abrir", "yes"),
+    ("Sim, pode ser", "yes"), ("Ok, adelante", "yes"),
+])
+def test_a_yes_with_new_data_is_a_correction(text, expected) -> None:
+    assert read_confirmation(text) == expected
+
+
+@needs_gold
+def test_correcting_the_amount_while_confirming_never_acts_on_the_old_charge(con, txn) -> None:
+    class Correcting(Fixed):
+        def extract(self, message):
+            self.calls.append(message)
+            if "500" in message:
+                return {"amount": 500.0, "currency": "USD", "merchant": None, "date": None}
+            return dict(self.fields)
+
+    chat = Conversation(Orchestrator(Correcting(fields_of(txn))), con, txn["customer_id"])
+    assert chat.say("no reconozco este cargo").context_out["awaiting"] == "confirmation"
+    turn = chat.say("Sí, corrige el monto a 500 USD")
+    assert turn.outcome is not Outcome.RESOLVED
+    assert not created(turn) and chat.box._disputes == {}
+    assert turn.extracted.get("amount") == 500.0, "la corrección se aplica"
