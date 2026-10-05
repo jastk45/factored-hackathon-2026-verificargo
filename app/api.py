@@ -163,6 +163,14 @@ def conversation(cid: str) -> dict[str, Any]:
     return conv
 
 
+def live_session(conv: dict[str, Any]):
+    """La sesión de la conversación, si sigue vigente. Si no, 401."""
+    try:
+        return verify_token(conv["token"])
+    except SessionError as exc:
+        raise HTTPException(401, str(exc)) from exc
+
+
 # --- endpoints ---------------------------------------------------------
 
 @app.get("/api/health")
@@ -280,14 +288,16 @@ def recent_transactions(cid: str, limit: int = 8) -> list[dict[str, Any]]:
 @app.get("/api/conversations/{cid}/questions")
 def agent_questions(cid: str) -> list[dict[str, Any]]:
     """Lo que un agente le preguntó a este cliente y espera respuesta."""
-    conversation(cid)
+    live_session(conversation(cid))
     return handoff_queue.questions_for(cid)
 
 
 @app.post("/api/conversations/{cid}/handoffs/{handoff_id}/reply")
 def reply_to_agent(cid: str, handoff_id: str, body: Message) -> dict[str, Any]:
-    """El cliente responde al agente. Solo sobre un caso de SU conversación."""
+    """El cliente responde al agente. Solo sobre un caso de SU conversación y
+    con la sesión vigente: un token vencido no reabre nada."""
     conv = conversation(cid)
+    live_session(conv)
     with conv["lock"]:
         try:
             stored = handoff_queue.customer_reply(handoff_id, cid, body.message)
@@ -409,7 +419,8 @@ def eval_reports() -> dict[str, Any]:
     out: dict[str, Any] = {}
     for cases in ("v2", "v1"):
         for system in ("baseline", "proposed"):
-            path = next((p for p in (reports / f"system_{system}_{cases}_v6.json",
+            path = next((p for p in (reports / f"system_{system}_{cases}_v6r.json",
+                                     reports / f"system_{system}_{cases}_v6.json",
                                      reports / f"system_{system}_{cases}_v5.json") if p.exists()),
                         reports / f"system_{system}_{cases}_v6.json")
             if path.exists():

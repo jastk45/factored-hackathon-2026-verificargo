@@ -598,6 +598,16 @@ que no está ni en las transacciones del cliente ni en lo que el cliente dijo.
 no cualquier paráfrasis engañosa. Un test comprueba que ninguna plantilla de
 VerifiCargo, en los tres países y los dos idiomas, se marque como falsa.
 
+**Corrección (cuarta revisión).** La primera versión castigaba negaciones y
+condiciones: "no hay una disputa abierta", "si supera 400 USD, se escalará",
+"no se ha reembolsado nada". Ahora una afirmación negada en su cláusula o
+condicional en su oración no cuenta (salvo los plazos en días: uno
+equivocado engaña igual), "reembolso" como sustantivo no afirma un reembolso,
+y un estado sin número de reclamo solo cuenta si se atribuye. Hay un corpus de
+respuestas válidas redactadas de otras formas que no deben marcarse, y de
+falsas que sí. Los reportes v6 se recalificaron (v6r) con las mismas
+conversaciones.
+
 ---
 
 ## D-21 · "Pedir información" llega al cliente y vuelve al caso
@@ -609,4 +619,5 @@ llegaba a nadie. Ahora la nota es obligatoria y **es la pregunta**: aparece en
 el chat del cliente (que la consulta cada pocos segundos), la respuesta queda
 en el caso como afirmación del cliente, sin verificar y con números de tarjeta
 redactados, y el caso vuelve a pendientes. Solo la conversación que originó el
-caso puede verla y responderla.
+caso puede verla y responderla, y solo con la sesión vigente (la cuarta
+revisión encontró que un token vencido podía hacerlo).

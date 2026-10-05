@@ -139,8 +139,10 @@ formas que el guion no cubre.
 (D-20): plazos asociados al concepto y país correctos, estados reales de los
 reclamos, montos que existen, acciones y traspasos que ocurrieron, ninguna
 promesa de reembolso. Detecta falsedades de esos tipos, no cualquier
-paráfrasis engañosa ni una respuesta confusa o en mal tono. Tres revisiones
-externas encontraron huecos en el evaluador; puede haber otros.
+paráfrasis engañosa ni una respuesta confusa o en mal tono. Cuatro revisiones
+externas encontraron huecos en el evaluador, en las dos direcciones: aprobaba
+falsedades y, después, castigaba negaciones y condiciones válidas. Un corpus
+de tests acota el problema; puede haber otros.
 
 **Una sola corrida por sistema**, sin intervalos de confianza ni pass^k. La
 variabilidad entre corridas del LLM (temperatura 0, pero no determinista entre

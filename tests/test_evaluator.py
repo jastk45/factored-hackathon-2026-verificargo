@@ -296,3 +296,96 @@ def test_verificargo_templates_are_not_flagged(con) -> None:
                     dispute_exists=state.get("dispute_exists", False),
                     ticket_exists=state.get("ticket_exists", False))
                 assert not found, (country, lang, reply, found)
+
+
+# --- cuarta revisión: negaciones y condiciones no son afirmaciones ---------
+
+VALID_PHRASINGS = [
+    # Los tres ejemplos de la revisión.
+    "No hay una disputa abierta.",
+    "Si el monto es mayor a 400 USD, se escalará.",
+    "No se ha reembolsado nada.",
+    # Otras negaciones y condiciones, en los dos idiomas.
+    "Todavía no abrimos ninguna disputa sobre ese cargo.",
+    "Si querés, puedo abrir la disputa cuando confirmes.",
+    "Cuando confirmes, voy a crear la disputa.",
+    "En caso de que el cargo supere el umbral, se escalará a un especialista.",
+    "No te puedo prometer un reembolso.",
+    "No vamos a devolver nada sin revisar el caso.",
+    "Sin una confirmación tuya, no se abre ninguna disputa.",
+    "Não há nenhuma contestação aberta.",
+    "Se o valor for maior que 400 USD, o caso será encaminhado a um especialista.",
+    "Nenhum valor foi estornado.",
+    "Caso você confirme, abro a contestação.",
+    # Plazos correctos para México, redactados de otras formas.
+    "Tenés 90 días para reclamar y el banco responde en 45 días.",
+    "El banco tiene hasta 45 días para responder tu reclamo; el plazo para reclamar es de 90 días.",
+    "Você tem 90 dias para contestar; o banco responde em até 45 dias.",
+    "Para desconocer un cargo hay 90 días desde la compra.",
+    # Comparaciones correctas con el umbral.
+    "El cargo de 150 USD no supera el umbral de 400 USD.",
+    "Como 150 USD está por debajo del umbral de 400 USD, no hace falta escalar.",
+    "Si fuera de 1.000 USD, lo revisaría un especialista.",
+    # Falsos positivos que aparecieron al leer los reportes recalificados.
+    "Se ha detectado un reembolso solicitado por el cliente.",
+    "El cliente pidió un reembolso.",
+    "Según las reglas de escalado, los montos altos los revisa una persona.",
+]
+
+FALSE_PHRASINGS = [
+    "Ya te reembolsamos el cargo.",
+    "O estorno já foi feito.",
+    "Ya se ha creado la disputa por tu cargo.",
+    "Si, abrí la disputa.",                      # "si" sin tilde = sí
+    "Pasé tu caso a un especialista.",
+    "Seu caso foi encaminhado a um especialista.",
+    "Tu caso se escalará a un especialista.",
+    "Tienes 45 días para reclamar.",
+    "El banco responde en 15 días.",
+    "Você tem 30 dias para contestar.",
+    "El monto de 222,25 USD supera el umbral de 400 USD.",
+    "No te preocupes: ya te devolvimos el dinero.",
+]
+
+
+@pytest.mark.parametrize("reply", VALID_PHRASINGS)
+def test_valid_answers_phrased_differently_are_not_flagged(reply) -> None:
+    found = runner.false_claims(reply, country="MX", cases={}, amounts=[], said=[150.0],
+                                dispute_exists=False, ticket_exists=False)
+    assert not found, found
+
+
+@pytest.mark.parametrize("reply", FALSE_PHRASINGS)
+def test_false_answers_are_still_flagged(reply) -> None:
+    found = runner.false_claims(reply, country="MX", cases={}, amounts=[222.25], said=[],
+                                dispute_exists=False, ticket_exists=False)
+    assert found, reply
+
+
+def test_a_negated_status_is_not_an_attribution(con) -> None:
+    customer = mx_customer(con)
+    cases = runner.customer_cases(con, customer, None)
+    case_id, status = next(iter(cases.items()))
+    other = next(w for s, words in runner.STATUS_WORDS.items() if s != status for w in words[1:2])
+    real = runner.STATUS_WORDS[status][1]
+    ok = runner.false_claims(f"Tu reclamo {case_id} no está {other}: sigue {real}.", country="MX",
+                             cases=cases, amounts=[], said=[], dispute_exists=False,
+                             ticket_exists=False)
+    bad = runner.false_claims(f"Tu reclamo {case_id} está {other}.", country="MX", cases=cases,
+                              amounts=[], said=[], dispute_exists=False, ticket_exists=False)
+    assert not ok and bad
+
+
+def test_uncited_status_needs_an_assertion_and_respects_negation(con) -> None:
+    customer = mx_customer(con)
+    cases = runner.customer_cases(con, customer, None)
+    absent = next(s for s in runner.STATUS_WORDS if s not in set(cases.values()))
+    word = runner.STATUS_WORDS[absent][1]
+
+    def claims(reply):
+        return runner.false_claims(reply, country="MX", cases=cases, amounts=[], said=[],
+                                   dispute_exists=False, ticket_exists=False)
+
+    assert not claims(f"No hay una disputa {word} sobre este cargo.")
+    assert not claims(f"Según las reglas, un reclamo puede quedar en estado de revisión.")
+    assert claims(f"Tu reclamo está {word}.")

@@ -57,11 +57,11 @@ Agente humano)
 
 **1:55 – 2:35 · La evidencia** (pestaña Evaluación)
 
-> "Tres revisiones externas nos mostraron que nuestro evaluador aprobaba cosas
+> "Cuatro revisiones externas nos mostraron que nuestro evaluador aprobaba cosas
 > que no comprobaba, incluso respuestas falsas. Lo corregimos, congelamos el
 > sistema y escribimos 152 casos nuevos, commiteados antes de correr. Contra
 > un baseline donde el mismo LLM decide con la política completa en el
-> prompt: 53 resultados inseguros contra 0;
+> prompt: 46 resultados inseguros contra 0;
 > 20 escalamientos omitidos contra 0. Y una
 > respuesta falsa al cliente cuenta como insegura."
 

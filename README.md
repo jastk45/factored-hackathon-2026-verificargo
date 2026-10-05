@@ -17,14 +17,14 @@ guion. Mismo modelo (qwen3:1.7b, local) para los dos.
 
 | | Baseline: el LLM decide con la política en el prompt | **VerifiCargo** |
 |---|---:|---:|
-| **Resultados inseguros** (acciones, escalamientos y afirmaciones falsas) | **34,9% (53/152)** | **0% (0/152)** |
-| Afirmaciones falsas al cliente | 9,2% (14/152) | 0% (0/152) |
+| **Resultados inseguros** (acciones, escalamientos y afirmaciones falsas) | **30,3% (46/152)** | **0% (0/152)** |
+| Afirmaciones falsas al cliente | 4,6% (7/152) | 0% (0/152) |
 | **Escalamientos omitidos** (sin ticket verificado) | **39,2% (20/51)** | **0% (0/51)** |
-| Resolución segura · casos resolubles | 10% (6/60) | **75% (45/60)** |
-| Resolución segura · todos los casos en alcance | 4,2% (6/142) | **31,7% (45/142)** |
+| Resolución segura · casos resolubles | 18,3% (11/60) | **75% (45/60)** |
+| Resolución segura · todos los casos en alcance | 7,7% (11/142) | **31,7% (45/142)** |
 | Resoluciones incompletas | 12,5% (7/56) | 0% (0/45) |
 | Escalamientos innecesarios | 47,3% (43/91) | 20,9% (19/91) |
-| Resultado aceptable (y no inseguro) | 55,9% (85/152) | 90,1% (137/152) |
+| Resultado aceptable (y no inseguro) | 59,9% (91/152) | 90,1% (137/152) |
 | Fallas inyectadas que se activaron | 80% (8/10) | 100% (10/10) |
 | Latencia por turno p50 / p95 | 2,7 s / 2,9 s | 2,2 s / 2,3 s |
 
@@ -32,10 +32,10 @@ Medición offline sobre casos escritos por el equipo: **no es una mejora medida
 en producción**. "En alcance" excluye las preguntas fuera de alcance; incluye
 los casos que deben escalar, que por definición no se resuelven solos.
 
-**Antes había otra tabla, y no era válida.** Tres revisiones externas (4 y 5
-de octubre) encontraron que el evaluador contaba como logros cosas que no
+**Antes había otra tabla, y no era válida.** Cuatro revisiones externas (4 y
+5 de octubre) encontraron que el evaluador contaba como logros cosas que no
 comprobaba —fallas que no se activaban, escalamientos sin ticket, respuestas
-falsas que contaban como seguras— y que el baseline corría con condiciones
+falsas que contaban como seguras, respuestas válidas castigadas— y que el baseline corría con condiciones
 distintas. El 82,4% de resolución segura que se publicó salía de ahí. Qué
 estaba mal, qué se corrigió y cómo se volvió a medir: [Evaluación](#evaluación).
 
@@ -186,6 +186,12 @@ que motivó D-10, confirmada.
    arreglo del sistema no viene de mirar eval-v2 (no tiene casos de ese tipo),
    pero eval-v2 ya había sido visto: es held-out respecto de los ajustes de
    v1-v4, no de este último.
+7. Una cuarta revisión encontró que el detector castigaba negaciones y
+   condiciones ("no hay una disputa abierta", "si supera 400 USD, se
+   escalará"). Se corrigió, se probó con 24 respuestas válidas redactadas de
+   otras formas, y se **recalificaron las mismas conversaciones** de v6
+   (reportes `v6r`): la recalificación es exacta (con el detector anterior
+   reproduce v6 sin diferencias).
 
 **Resultado sobre eval-v2** (la tabla de arriba). Por bloque, VerifiCargo:
 
@@ -196,17 +202,17 @@ que motivó D-10, confirmada.
 - **Punto débil**: preguntas de plazos (3/12) y de estado
   de reclamos (2/8). El clasificador no las reconoce y el
   sistema escala: es seguro, pero es trabajo que podría resolverse solo. **En plazos el
-  baseline resuelve uno más** (4/12), pero 5 de sus 12 respuestas dan plazos
-  falsos para el país del cliente; VerifiCargo no da ninguno.
+  baseline es claramente mejor** (9/12 contra 3/12): redactar una
+  respuesta de política es algo que un LLM hace bien.
 - **El baseline** nunca pasa del primer turno: crea la disputa de entrada
-  declarando que el cliente confirmó (40 acciones sin que el cliente confirmara, 21 acciones que el caso no permitía, 20 escalamientos omitidos, 14 conversaciones con afirmaciones falsas y 3 disputas sobre otra transacción; un caso puede tener varios).
+  declarando que el cliente confirmó (40 acciones sin que el cliente confirmara, 21 acciones que el caso no permitía, 20 escalamientos omitidos, 7 conversaciones con afirmaciones falsas y 3 disputas sobre otra transacción; un caso puede tener varios).
 - Español 71% (22/31) y portugués 79,3% (23/29) de resolución segura
   sobre los casos resolubles.
 
 **Sobre eval-v1**, el set usado durante el desarrollo, con el mismo evaluador
 corregido: VerifiCargo 0% (0/159) inseguros y
 85,1% (63/74) de resolución segura; baseline
-30,8% (49/159) y 4,1% (3/74). No es held-out: el
+27% (43/159) y 4,1% (3/74). No es held-out: el
 sistema se ajustó mirándolo.
 
 **La historia de v1 a v4** —un resultado inseguro real, un diagnóstico
@@ -233,6 +239,7 @@ reprodujeron antes de arreglarlos y tienen un test de regresión
 | Una disputa repetida rompía con `KeyError` | GATE-05 informa la disputa existente |
 | "Sí, corrige el monto a 500 USD" abría la disputa sobre el cargo anterior | Un "sí" vale solo si todas sus palabras son de confirmación; lo demás es corrección (D-19) |
 | "Pedir información" no le llegaba al cliente | La pregunta aparece en su chat y la respuesta vuelve al caso, sin verificar (D-21) |
+| Preguntas y respuestas con el agente aceptaban una sesión vencida | Validan el token como el resto de la conversación |
 | Una sola conexión de DuckDB para todos los hilos: con 32 requests simultáneos fallaban 183 de 200 y algunos recibían datos de la consulta de otro | Un cursor por request y locks en disputas, cola y conversación ([tests/test_concurrency.py](tests/test_concurrency.py)) |
 
 Metodología, curvas y anomalías: [docs/experiments.md](docs/experiments.md).
@@ -262,7 +269,7 @@ docker compose up --build                   # sin modelo
 docker compose --profile llm up --build     # con Ollama + qwen3:1.7b
 ```
 
-Otros comandos: `make test` (315 tests), `make train` (clasificador),
+Otros comandos: `make test` (354 tests), `make train` (clasificador),
 `make eval` (sistema contra baseline; requiere Ollama). Para una corrida
 puntual: `uv run python eval/runner.py --system proposed --cases v2 --tag v5`.
 
@@ -295,7 +302,7 @@ ml/           clasificador de intención y corpus traducido
 policy/       dispute_policy.yaml — reglas con ID y procedencia
 eval/         eval sets congelados (v1, v2), runner, reportes
 docs/         DECISIONS · EDA_FINDINGS · experiments · limitations · intent_catalog
-tests/        315 tests, incluidos los del evaluador y de concurrencia
+tests/        354 tests, incluidos los del evaluador y de concurrencia
 ```
 
 Decisiones de diseño y su porqué: [docs/DECISIONS.md](docs/DECISIONS.md).

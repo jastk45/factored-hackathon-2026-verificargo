@@ -196,6 +196,11 @@ Si llega una segunda persona: entregale el track `[ML]` + `[EVAL]` completo (dí
 - [x] **P0** `[AGENT]` "Pedir información" llega al chat del cliente y la respuesta vuelve al caso (D-21).
 - [x] **P0** `[EVAL]` Correr los cuatro reportes v6 y actualizar README, E-08, deck y vista de Evaluación. — *Hecho: eval-v2 0/152 inseguros y 0 afirmaciones falsas contra 53/152 y 14/152 del baseline.*
 
+### Cuarta revisión (5 oct)
+
+- [x] **P0** `[EVAL]` El detector castigaba negaciones y condiciones: corregido, con un corpus de respuestas válidas redactadas de otras formas. Reportes v6 recalificados (v6r) con las mismas conversaciones. **→ E-09**
+- [x] **P0** `[AGENT]` Preguntas y respuestas con el agente validan la sesión (un token vencido daba 200).
+
 - [ ] **P0** `[SHIP]` Video pitch **máximo 3 minutos**: los 3 caminos en es y pt, una inyección bloqueada con su traza, el handoff llegando a la consola. — *Hecho: archivo grabado y revisado.*
 - [ ] **P0** `[SHIP]` **ENVIAR a hackathon.admin@factored.ai**: link del repo, link del deploy, slides, video. — *Hecho: email enviado con acuse.*
 

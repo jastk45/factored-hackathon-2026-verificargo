@@ -481,3 +481,29 @@ def test_asking_for_information_reaches_the_customer_and_the_answer_returns(clie
     # Responder dos veces no reabre nada: ya no hay pregunta abierta.
     assert client.post(f"/api/conversations/{cid}/handoffs/{hid}/reply",
                        json={"message": "otra vez"}).status_code == 409
+
+
+@needs_gold
+@needs_model
+def test_an_expired_session_cannot_read_or_answer_agent_questions(client) -> None:
+    """Cuarta revisión: preguntas y respuestas aceptaban un token vencido."""
+    import api
+    conv = client.post("/api/conversations", json={"scenario_id": "high-amount"}).json()
+    cid = conv["conversation_id"]
+    turn = client.post(f"/api/conversations/{cid}/messages",
+                       json={"message": conv["scenario"]["message"]}).json()["turn"]
+    if turn["outcome"] == "CLARIFY":
+        turn = client.post(f"/api/conversations/{cid}/messages",
+                           json={"message": "choice:dispute"}).json()["turn"]
+    hid = turn["handoff"]["handoff_id"]
+    client.post(f"/api/handoffs/{hid}/resolve", headers=agent_headers(client),
+                json={"decision": "info_requested", "note": "¿Compartiste el OTP?"})
+
+    api.CONVERSATIONS[cid]["token"] = issue_token(conv["scenario"]["customer"], "CO", "es",
+                                                  AuthLevel.LOW, ttl=-10)
+    assert client.get(f"/api/conversations/{cid}/questions").status_code == 401
+    assert client.post(f"/api/conversations/{cid}/handoffs/{hid}/reply",
+                       json={"message": "no"}).status_code == 401
+    # El caso sigue esperando al cliente: la respuesta con sesión vencida no cuenta.
+    import handoff_queue
+    assert handoff_queue.get(hid)["status"] == "info_requested"
