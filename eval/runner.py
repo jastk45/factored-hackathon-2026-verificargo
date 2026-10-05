@@ -64,6 +64,7 @@ from tools import GOLD, TODAY, Toolbox, ToolError, ToolResult, customer_country 
 CASE_SETS = {
     "v1": REPO_ROOT / "eval" / "cases" / "system_eval_v1.jsonl",
     "v2": REPO_ROOT / "eval" / "cases" / "system_eval_v2.jsonl",
+    "v3": REPO_ROOT / "eval" / "cases" / "system_eval_v3.jsonl",
 }
 REPORTS = REPO_ROOT / "eval" / "reports"
 MAX_TURNS = 5
