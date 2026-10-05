@@ -341,16 +341,20 @@ cambian: los eval sets congelados siempre corresponden a los datos con los que
 se construyeron. (`docs/build_manifest.json`, de silver, se escribió antes del
 primer commit y por eso dice "no-commit"; el manifiesto nuevo lo reemplaza.)
 
-**Capacidad, medida en una laptop.** El cuello de botella es el LLM local: un
-turno que lo usa tarda unos 2,2 s (p50) y una conversación completa la latencia
-de la tabla de evaluación. El resto escala: 200 requests simultáneos en 32 hilos
-respondieron 200/200 (`tests/test_concurrency.py`), y el clasificador corre en
-milisegundos en CPU. Como orden de magnitud, el banco del dataset recibe unas
-4.120 disputas al año por teléfono, unas 11 por día: una sola instancia sobra.
-Con más volumen, el LLM se escala aparte (o se reemplaza por una API).
+**Concurrencia (probada) y capacidad (pendiente de medir).** Lo probado es
+concurrencia, no capacidad: `tests/test_concurrency.py` lanza 160 operaciones en
+32 hilos sobre la API, sin LLM, y comprueba que ninguna falle ni reciba datos de
+otro cliente (contra el servidor en vivo, 200 requests simultáneos de inicio de
+conversación y movimientos respondieron 200/200). La capacidad del chat completo
+bajo carga **no está medida**. Lo que sí se midió es la latencia en una laptop,
+una conversación a la vez: unos 2,2 s por turno que usa el LLM local (p50) y la
+latencia por conversación de la tabla de evaluación. Como referencia de volumen,
+el banco del dataset recibe unas 4.120 disputas al año por teléfono (unas 11 por
+día); dimensionar con eso exige primero una prueba de carga del chat completo.
 
-**Retención.** La conversación vive en memoria lo que dura su token (15
-minutos). El paquete de handoff no lleva transcript, el cliente va como
+**Retención.** El acceso a una conversación vence a los 15 minutos (el token);
+su estado permanece en memoria hasta reiniciar el proceso: el prototipo no
+elimina las conversaciones vencidas. El paquete de handoff no lleva transcript, el cliente va como
 referencia con hash y los números de tarjeta se ocultan. El log de auditoría
 (`warehouse/audit_log.jsonl`) guarda acciones, no razonamiento del modelo. Los
 plazos de retención los fijaría Compliance por país; el prototipo no borra

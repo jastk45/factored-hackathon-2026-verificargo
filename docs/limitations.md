@@ -175,7 +175,7 @@ tokens estimados, no gasto medido.
 | Política | YAML + funciones puras | Mismo modelo, con OPA o Cerbos y revisión de Compliance por versión |
 | Datos | DuckDB sobre Parquet local | Mismo pipeline en un lakehouse con orquestador (Airflow/Dagster) |
 | Observabilidad | Traza por turno + log de auditoría JSONL | OpenTelemetry → Langfuse/Datadog, alertas sobre tasa de escalamiento y unsafe |
-| Retención | Sin política | Logs con PII minimizada; retención según regulación local |
+| Retención | Conversaciones vencidas quedan en memoria hasta reiniciar; nada se borra | Almacén con TTL igual a la vida del token; logs con PII minimizada y retención según regulación local |
 | Modelo | qwen3:1.7b local | Comparar contra un modelo de API y re-calibrar la conformal con tráfico real |
-| Capacidad | Un proceso, ~5 s por turno | Clasificador en CPU (2 ms) escala horizontal; el LLM es el cuello de botella |
+| Capacidad | Un proceso; concurrencia probada, capacidad bajo carga sin medir | Prueba de carga del chat completo; el LLM es el cuello de botella previsible |
 | Portugués | Traducido y escrito por el equipo | Datos reales de clientes de Brasil y re-entrenamiento |
