@@ -134,3 +134,12 @@
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.45 0.11 160);
 }
+
+/* Home banking de la demo: con el chat abierto en pantalla ancha, el contenido
+   deja libre la franja del panel (430px + márgenes = 470px desde el borde).
+   El contenido mide hasta 80rem (max-w-7xl) con 1rem de margen. */
+@media (min-width: 1024px) {
+  .chat-open-pad {
+    padding-right: max(0px, calc((min(100vw, 80rem) - 100vw) / 2 - 1rem + 470px));
+  }
+}

@@ -52,6 +52,8 @@ export interface ChatWidgetProps {
   onConversation?: (cid: string, session: SessionInfo, scenario: Scenario) => void
   onSession?: (session: SessionInfo) => void
   onEscalated?: () => void
+  /** Avisa cuando el panel se abre o se cierra (la página puede hacerle lugar). */
+  onOpenChange?: (open: boolean) => void
 }
 
 // Sin servidor: se dice qué pasa en vez de mostrar un error.
@@ -63,7 +65,7 @@ export const OPEN_EVENT = "verificargo:open"
 
 export function ChatWidget({
   scenarioId, demo = true, showTrace = true, defaultOpen = false,
-  onConversation, onSession, onEscalated,
+  onConversation, onSession, onEscalated, onOpenChange,
 }: ChatWidgetProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [scenario, setScenario] = useState<Scenario | null>(null)
@@ -82,6 +84,10 @@ export function ChatWidget({
 
   const lang = scenario?.lang ?? "es"
   const t = T[lang]
+
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
 
   const start = useCallback(async (s: Scenario) => {
     setError(null)
@@ -230,7 +236,7 @@ export function ChatWidget({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-6 z-[2147483000] flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 font-sans text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-4 z-[2147483000] sm:right-6 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 font-sans text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
       >
         <MessageCircle className="size-5" /> {t.open}
       </button>
@@ -238,7 +244,7 @@ export function ChatWidget({
   }
 
   return (
-    <div className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-6 z-[2147483000] flex h-[min(680px,calc(100vh_-_1.5rem_-_var(--verificargo-bottom,1.5rem)))] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background font-sans text-foreground shadow-2xl">
+    <div className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-4 z-[2147483000] sm:right-6 flex h-[min(680px,calc(100vh_-_1.5rem_-_var(--verificargo-bottom,1.5rem)))] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background font-sans text-foreground shadow-2xl">
       <div className="flex items-center gap-3 bg-primary px-4 py-3 text-primary-foreground">
         <div className="flex size-8 items-center justify-center rounded-full bg-white/15">
           <ShieldCheck className="size-4" />
