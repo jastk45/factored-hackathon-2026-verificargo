@@ -1,18 +1,10 @@
-# VerifiCargo · imagen de la demo: frontend React compilado + API FastAPI.
+# VerifiCargo · backend (API FastAPI). El frontend se publica aparte (Netlify)
+# y llama a esta API; CORS se controla con WIDGET_ORIGINS.
 #
-# Los datos NO van en la imagen: el gold se monta como volumen (ver
-# docker-compose.yml). Así la imagen no contiene datos de clientes, y el
-# pipeline sigue siendo el único camino para producirlos.
+# La imagen lleva el gold MÍNIMO de la demo (deploy/demo_gold: solo los
+# clientes de los escenarios, unos KB). Para correr con el gold completo,
+# montá ./warehouse como volumen (docker-compose.yml): reemplaza al mínimo.
 
-# --- 1. frontend --------------------------------------------------------
-#FROM node:22-slim AS web
-#WORKDIR /web
-#COPY frontend/package.json frontend/package-lock.json ./
-#RUN npm ci
-#COPY frontend/ ./
-#RUN npm run build
-
-# --- 2. API -------------------------------------------------------------
 FROM python:3.11-slim
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 WORKDIR /app
@@ -24,7 +16,7 @@ COPY app/ app/
 COPY policy/ policy/
 COPY models/ models/
 COPY eval/reports/ eval/reports/
-COPY --from=web /web/dist frontend/dist
+COPY deploy/demo_gold/ warehouse/gold/
 
 # El encoder multilingüe se descarga en el build: el contenedor arranca sin red.
 RUN uv run --no-dev python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-small')"
