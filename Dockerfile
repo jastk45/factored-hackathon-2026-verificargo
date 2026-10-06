@@ -5,12 +5,12 @@
 # pipeline sigue siendo el único camino para producirlos.
 
 # --- 1. frontend --------------------------------------------------------
-FROM node:22-slim AS web
-WORKDIR /web
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
+#FROM node:22-slim AS web
+#WORKDIR /web
+#COPY frontend/package.json frontend/package-lock.json ./
+#RUN npm ci
+#COPY frontend/ ./
+#RUN npm run build
 
 # --- 2. API -------------------------------------------------------------
 FROM python:3.11-slim
