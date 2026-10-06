@@ -160,7 +160,7 @@ async function call<T>(path: string, init?: RequestInit, token?: string): Promis
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail ?? `HTTP ${res.status}`)
+    throw Object.assign(new Error(body.detail ?? `HTTP ${res.status}`), { status: res.status })
   }
   return res.json()
 }

@@ -9,6 +9,8 @@
     header { background: #1d3557; color: #fff; padding: 18px 32px; font-size: 22px; }
     main { max-width: 760px; margin: 32px auto; padding: 0 20px; line-height: 1.6; }
     pre { background: #fff; border: 1px solid #ddd; padding: 12px; overflow-x: auto; font-size: 13px; }
+    /* El sitio está en Netlify, que pone su insignia abajo a la derecha: el chat se sube. */
+    :root { --verificargo-bottom: 4.5rem; }
     button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid #1d3557; background: #fff; cursor: pointer; }
   </style>
 </head>
@@ -23,7 +25,9 @@
     <p>La página también puede abrirlo con un mensaje:</p>
     <button onclick="window.VerifiCargo.open('Tengo un cargo que no reconozco')">Abrir el asistente</button>
     <p>Los estilos de esta página (serif, colores propios) no afectan al chat: vive
-      en un Shadow DOM.</p>
+      en un Shadow DOM. Si algo de la página ocupa la esquina, el chat se sube con
+      una variable CSS:</p>
+    <pre>:root { --verificargo-bottom: 4.5rem; }</pre>
   </main>
   <script src="/widget.js" data-scenario="normal-es" data-trace="true"></script>
 </body>

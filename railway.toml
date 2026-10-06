@@ -1,0 +1,26 @@
+# Railway: solo el backend (la API). El frontend está en Netlify (netlify.toml).
+# Se redespliega solo si cambia algo que entra en la imagen: un cambio del
+# frontend o de la documentación no reinicia el servidor (las conversaciones
+# viven en memoria y se perderían).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = [
+  "Dockerfile",
+  "railway.toml",
+  "pyproject.toml",
+  "uv.lock",
+  ".python-version",
+  "app/**",
+  "policy/**",
+  "models/**",
+  "eval/reports/**",
+  "deploy/demo_gold/**",
+]
+
+# El tráfico pasa al contenedor nuevo cuando /api/health responde.
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

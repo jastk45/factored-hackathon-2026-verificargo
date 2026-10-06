@@ -25,6 +25,7 @@ const T = {
     replySent: "Tu respuesta se envió al especialista (caso {id}). No hace falta que repitas lo anterior.",
     otp: "Ingresá el código que te enviamos", verify: "Verificar", demo: "Cliente de demostración",
     otpHint: "OTP de prueba: 123456",
+    restarted: "La conversación anterior expiró en el servidor; abrí una nueva con el mismo cliente.",
     greeting: "Hola, soy el asistente de disputas. Contame qué cargo no reconocés: el monto, la fecha y el comercio me ayudan a encontrarlo.",
   },
   pt: {
@@ -34,6 +35,7 @@ const T = {
     replySent: "Sua resposta foi enviada ao especialista (caso {id}). Não precisa repetir o que já disse.",
     otp: "Digite o código que enviamos", verify: "Verificar", demo: "Cliente de demonstração",
     otpHint: "OTP de teste: 123456",
+    restarted: "A conversa anterior expirou no servidor; abri uma nova com o mesmo cliente.",
     greeting: "Olá, sou o assistente de contestações. Me conte qual cobrança não reconhece: valor, data e estabelecimento me ajudam a encontrá-la.",
   },
 }
@@ -52,9 +54,9 @@ export interface ChatWidgetProps {
   onEscalated?: () => void
 }
 
-// Sitio estático sin backend: se dice qué pasa en vez de mostrar un error.
-const OFFLINE = "La demo interactiva corre en el servidor de VerifiCargo y se coordina en vivo con los jueces. " +
-  "Los resultados de la evaluación están en la pestaña Evaluación."
+// Sin servidor: se dice qué pasa en vez de mostrar un error.
+const OFFLINE = "No pude conectar con el servidor de VerifiCargo. Probá de nuevo en un momento; " +
+  "los resultados de la evaluación están en la app, pestaña Evaluación."
 
 /** Abre el chat desde la página que lo aloja, opcionalmente con un mensaje. */
 export const OPEN_EVENT = "verificargo:open"
@@ -169,14 +171,39 @@ export function ChatWidget({
         onEscalated?.()
         return
       }
-      const r = await api.send(cid, text)
-      setEntries((e) => [...e, { role: "assistant", turn: r.turn }])
-      updateSession(r.session)
-      if (r.turn.outcome === "ESCALATED") onEscalated?.()
+      await deliver(cid, text)
     } catch (e) {
-      setError(String(e))
+      if (isLost(e)) await recover(text)
+      else setError(String(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function deliver(conversationId: string, text: string) {
+    const r = await api.send(conversationId, text)
+    setEntries((e) => [...e, { role: "assistant", turn: r.turn }])
+    updateSession(r.session)
+    if (r.turn.outcome === "ESCALATED") onEscalated?.()
+  }
+
+  // Las conversaciones viven en la memoria del servidor: si se reinició, la
+  // del chat ya no existe. Se abre otra con el mismo cliente y, si el mensaje
+  // era texto libre, se reenvía; una opción (confirmar, elegir) no tiene
+  // sentido sin el contexto, así que se deja el mensaje del escenario listo.
+  const isLost = (e: unknown) => (e as { status?: number }).status === 404 && !!scenario && !question
+
+  async function recover(text: string) {
+    try {
+      const r = await api.start(scenario!.id)
+      setCid(r.conversation_id)
+      updateSession(r.session)
+      onConversation?.(r.conversation_id, r.session, r.scenario)
+      setEntries((e) => [...e, { role: "notice", text: t.restarted }])
+      if (text.startsWith("choice:")) setInput(r.scenario.message)
+      else await deliver(r.conversation_id, text)
+    } catch (e) {
+      setError(String(e))
     }
   }
 
@@ -189,7 +216,8 @@ export function ChatWidget({
       // Con la identidad verificada, se reintenta la confirmación pendiente.
       await send("choice:confirm", t.confirm)
     } catch (e) {
-      setError(String(e))
+      if (isLost(e)) await recover("choice:confirm")
+      else setError(String(e))
     }
   }
 
@@ -202,7 +230,7 @@ export function ChatWidget({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-[2147483000] flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 font-sans text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-6 z-[2147483000] flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 font-sans text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
       >
         <MessageCircle className="size-5" /> {t.open}
       </button>
@@ -210,7 +238,7 @@ export function ChatWidget({
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[2147483000] flex h-[min(680px,calc(100vh-3rem))] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background font-sans text-foreground shadow-2xl">
+    <div className="fixed bottom-[var(--verificargo-bottom,1.5rem)] right-6 z-[2147483000] flex h-[min(680px,calc(100vh_-_1.5rem_-_var(--verificargo-bottom,1.5rem)))] w-[min(430px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border bg-background font-sans text-foreground shadow-2xl">
       <div className="flex items-center gap-3 bg-primary px-4 py-3 text-primary-foreground">
         <div className="flex size-8 items-center justify-center rounded-full bg-white/15">
           <ShieldCheck className="size-4" />
