@@ -29,6 +29,7 @@ import os
 import sys
 import threading
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +59,19 @@ from session import (  # noqa: E402
 )
 from tools import Toolbox, ToolError, customer_country  # noqa: E402
 
-app = FastAPI(title="VerifiCargo", version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # En el servidor desplegado (WARMUP=1) el encoder de intención se carga
+    # antes de recibir tráfico: si no, el primer cliente espera ~10 s. El
+    # healthcheck de Railway pasa recién cuando esto terminó.
+    if os.getenv("WARMUP") == "1":
+        orchestrator().classifier.decide("hola", "es")
+    yield
+
+
+app = FastAPI(title="VerifiCargo", version="1.0.0", lifespan=lifespan)
 # El widget embebible (widget.js) llama a la API desde la página que lo aloja.
 # WIDGET_ORIGINS limita qué sitios pueden hacerlo; "*" en la demo. Sin
 # credenciales de navegador: la consola del agente usa su token en un header.

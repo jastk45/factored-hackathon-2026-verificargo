@@ -22,6 +22,11 @@ COPY deploy/demo_gold/ warehouse/gold/
 RUN uv run --no-dev python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-small')"
 
 ENV LLM_PROVIDER=none PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
+# PyTorch abre un hilo por CPU del host, pero el contenedor tiene una cuota de
+# 1-2 vCPU: los hilos se pisan y cada encode pasaba de 20 ms a ~15 s.
+ENV OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TOKENIZERS_PARALLELISM=false
+# El encoder se carga al arrancar, antes del healthcheck (api.py, lifespan).
+ENV WARMUP=1
 EXPOSE 8000
 # Railway (y otros PaaS) asignan el puerto en $PORT; en local, 8000.
 CMD ["sh", "-c", "uv run --no-dev python -m uvicorn api:app --app-dir app --host 0.0.0.0 --port ${PORT:-8000}"]
