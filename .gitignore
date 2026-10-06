@@ -38,3 +38,4 @@ desktop.ini
 # PDFs del organizador, transcripción del kickoff y notas de investigación
 # privadas. Se citan en docs/, pero no se publican.
 base y standares/
+deploy/railway/bundle/

@@ -327,3 +327,31 @@ def test_exact_amount_or_date_picks_the_single_matching_candidate() -> None:
     # Un monto redondeado no coincide con ninguna: se sigue preguntando.
     assert narrow_exact(cands, {"amount": 390.0}) == cands
     assert narrow_exact(cands, {}) == cands
+
+
+def test_anthropic_provider_parses_and_anchors_the_answer(monkeypatch) -> None:
+    """Claude como proveedor: misma extracción, mismo anclaje al mensaje."""
+    import io
+    import json as _json
+    import urllib.request as ur
+    seen = {}
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake(req, timeout=None):
+        seen["url"], seen["headers"] = req.full_url, dict(req.headers)
+        text = 'Aquí está:\n```json\n{"amount": 1121353, "currency": "COP", "merchant": "Uber", "date": null}\n```'
+        return Resp(_json.dumps({"content": [{"type": "text", "text": text}]}).encode())
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "clave-de-prueba")
+    monkeypatch.setattr(ur, "urlopen", fake)
+    result = SlotExtractor(provider="anthropic").extract_with_trace("me cobraron 524.058 COP en Uber")
+    assert seen["url"].endswith("/v1/messages")
+    assert seen["headers"]["X-api-key"] == "clave-de-prueba"
+    # El monto inventado se descarta: no está en el mensaje (anclaje, E-06).
+    assert result.fields["amount"] == 524058.0 and result.source == "llm+anclaje"

@@ -31,5 +31,5 @@ RUN uv run --no-dev python -c "from sentence_transformers import SentenceTransfo
 
 ENV LLM_PROVIDER=none PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
 EXPOSE 8000
-HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"
-CMD ["uv", "run", "--no-dev", "python", "-m", "uvicorn", "api:app", "--app-dir", "app", "--host", "0.0.0.0", "--port", "8000"]
+# Railway (y otros PaaS) asignan el puerto en $PORT; en local, 8000.
+CMD ["sh", "-c", "uv run --no-dev python -m uvicorn api:app --app-dir app --host 0.0.0.0 --port ${PORT:-8000}"]

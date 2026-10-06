@@ -231,4 +231,22 @@ class SlotExtractor:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(json.load(resp)["choices"][0]["message"]["content"])
 
+        if self.provider == "anthropic":
+            body = {
+                "model": os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
+                "max_tokens": 200, "temperature": 0, "system": SLOT_PROMPT,
+                "messages": [{"role": "user", "content": f"Mensaje: {message}"}],
+            }
+            req = urllib.request.Request(
+                os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com") + "/v1/messages",
+                data=json.dumps(body).encode(),
+                headers={"x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                         "anthropic-version": "2023-06-01",
+                         "content-type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                text = json.load(resp)["content"][0]["text"]
+            # El modelo puede envolver el JSON en texto o en un bloque de código.
+            return json.loads(text[text.index("{"): text.rindex("}") + 1])
+
         raise ValueError(f"proveedor no soportado: {self.provider}")
