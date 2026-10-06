@@ -1,6 +1,7 @@
 # Netlify: sitio estático del frontend (app, evaluación y widget.js).
-# La API corre aparte; sin ella, el chat lo dice y la evaluación usa la copia
-# incluida (frontend/public/eval-data.json).
+# La API corre aparte (Railway); VITE_API_BASE queda fija en el build, así el
+# widget pegado en cualquier página llama a esa API. Sin ella, el chat lo dice
+# y la evaluación usa la copia incluida (frontend/public/eval-data.json).
 [build]
   base = "frontend"
   command = "npm ci && npm run build"
@@ -8,6 +9,7 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  VITE_API_BASE = "https://factored-hackathon-2026-verificargo-production.up.railway.app"
 
 [[redirects]]
   from = "/*"
