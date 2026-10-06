@@ -143,8 +143,15 @@ export interface EvalData {
   }
 }
 
+// Servidor de la API. Vacío = el mismo origen (la app). El widget embebible lo
+// fija al servidor que sirvió widget.js, porque corre dentro de otra página.
+let API_BASE = ""
+export function setApiBase(base: string) {
+  API_BASE = base.replace(/\/$/, "")
+}
+
 async function call<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",

@@ -59,7 +59,11 @@ from session import (  # noqa: E402
 from tools import Toolbox, ToolError, customer_country  # noqa: E402
 
 app = FastAPI(title="VerifiCargo", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
+# El widget embebible (widget.js) llama a la API desde la página que lo aloja.
+# WIDGET_ORIGINS limita qué sitios pueden hacerlo; "*" en la demo. Sin
+# credenciales de navegador: la consola del agente usa su token en un header.
+app.add_middleware(CORSMiddleware,
+                   allow_origins=os.getenv("WIDGET_ORIGINS", "*").split(","),
                    allow_methods=["*"], allow_headers=["*"])
 
 ENGINE = PolicyEngine()

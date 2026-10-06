@@ -278,6 +278,27 @@ Limitaciones: [docs/limitations.md](docs/limitations.md).
 
 ---
 
+## El asistente es un widget: una línea en cualquier página
+
+Todo el flujo vive en un chat flotante (conversación, opciones, confirmación,
+verificación de identidad y preguntas del especialista). Para ponerlo en
+cualquier página:
+
+```html
+<script src="http://localhost:8000/widget.js" data-scenario="normal-es"></script>
+```
+
+Opciones: `data-scenario` (cliente de demostración), `data-demo="false"` (sin
+selector de clientes), `data-trace="true"` (traza de cada turno),
+`data-open="true"`, `data-api` (otro servidor). La página puede abrirlo con
+`window.VerifiCargo.open("texto")`. Se monta en un Shadow DOM, así que los
+estilos de la página no lo rompen. Ejemplo:
+[`/demo-sitio.html`](frontend/public/demo-sitio.html). En producción, el banco
+le pasaría su propio token de sesión; en la demo usa los clientes de los
+escenarios. `WIDGET_ORIGINS` limita qué sitios pueden usarlo.
+
+---
+
 ## Cómo correrlo
 
 Requiere [uv](https://docs.astral.sh/uv/) y Node 20+. Ollama es opcional.
