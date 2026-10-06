@@ -353,5 +353,11 @@ def test_anthropic_provider_parses_and_anchors_the_answer(monkeypatch) -> None:
     result = SlotExtractor(provider="anthropic").extract_with_trace("me cobraron 524.058 COP en Uber")
     assert seen["url"].endswith("/v1/messages")
     assert seen["headers"]["X-api-key"] == "clave-de-prueba"
+    assert "Anthropic-workspace-id" not in seen["headers"]
     # El monto inventado se descarta: no está en el mensaje (anclaje, E-06).
     assert result.fields["amount"] == 524058.0 and result.source == "llm+anclaje"
+
+    # Con una key sin workspace, el workspace va en el header.
+    monkeypatch.setenv("ANTHROPIC_WORKSPACE_ID", "wrkspc_prueba")
+    SlotExtractor(provider="anthropic").extract_with_trace("me cobraron 524.058 COP en Uber")
+    assert seen["headers"]["Anthropic-workspace-id"] == "wrkspc_prueba"

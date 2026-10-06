@@ -17,12 +17,16 @@ cualquiera pueda probar el sistema.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
+
+log = logging.getLogger("verificargo.llm")
 
 MAX_ATTEMPTS = 2          # intentos totales contra el LLM
 BACKOFF_SECONDS = 0.5     # se duplica en cada reintento
@@ -192,11 +196,17 @@ class SlotExtractor:
                                             int((time.perf_counter() - started) * 1000),
                                             errors + notes)
                 except Exception as exc:  # noqa: BLE001 - se reintenta y luego se cae a regex
-                    errors.append(f"intento {attempt}: {type(exc).__name__}: {exc}"[:160])
+                    detail = str(exc)
+                    if isinstance(exc, urllib.error.HTTPError):
+                        # El motivo real (key, workspace, modelo) viene en el cuerpo.
+                        detail += " " + exc.read().decode(errors="replace")[:240]
+                    errors.append(f"intento {attempt}: {type(exc).__name__}: {detail}"[:320])
                     if attempt < MAX_ATTEMPTS:
                         time.sleep(delay)
                         delay *= 2
 
+        if errors:
+            log.warning("LLM %s falló, se usa regex: %s", self.provider, errors[-1])
         return ExtractionResult(regex_extract(message), "regex", attempts,
                                 int((time.perf_counter() - started) * 1000), errors)
 
@@ -237,12 +247,16 @@ class SlotExtractor:
                 "max_tokens": 200, "temperature": 0, "system": SLOT_PROMPT,
                 "messages": [{"role": "user", "content": f"Mensaje: {message}"}],
             }
+            headers = {"x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                       "anthropic-version": "2023-06-01",
+                       "content-type": "application/json"}
+            # Una key que no pertenece a un workspace exige decir cuál usar
+            # (si no, la API responde 400 y todo cae a regex).
+            if os.getenv("ANTHROPIC_WORKSPACE_ID"):
+                headers["anthropic-workspace-id"] = os.environ["ANTHROPIC_WORKSPACE_ID"]
             req = urllib.request.Request(
                 os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com") + "/v1/messages",
-                data=json.dumps(body).encode(),
-                headers={"x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
-                         "anthropic-version": "2023-06-01",
-                         "content-type": "application/json"},
+                data=json.dumps(body).encode(), headers=headers,
             )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 text = json.load(resp)["content"][0]["text"]
