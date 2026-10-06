@@ -1,0 +1,15 @@
+# Netlify: sitio estático del frontend (app, evaluación y widget.js).
+# La API corre aparte; sin ella, el chat lo dice y la evaluación usa la copia
+# incluida (frontend/public/eval-data.json).
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
