@@ -145,7 +145,7 @@ export interface EvalData {
 
 // Servidor de la API. Vacío = el mismo origen (la app). El widget embebible lo
 // fija al servidor que sirvió widget.js, porque corre dentro de otra página.
-let API_BASE = ""
+let API_BASE = import.meta.env.VITE_API_BASE ?? ""
 export function setApiBase(base: string) {
   API_BASE = base.replace(/\/$/, "")
 }
@@ -201,5 +201,7 @@ export const api = {
       { method: "POST", body: JSON.stringify({ decision, note }) },
       token,
     ),
-  evaluation: () => call<EvalData>("/api/eval"),
+  // Sin backend (sitio estático), los resultados vienen de una copia incluida.
+  evaluation: () =>
+    call<EvalData>("/api/eval").catch(() => fetch("/eval-data.json").then((r) => r.json() as Promise<EvalData>)),
 }

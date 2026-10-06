@@ -52,6 +52,10 @@ export interface ChatWidgetProps {
   onEscalated?: () => void
 }
 
+// Sitio estático sin backend: se dice qué pasa en vez de mostrar un error.
+const OFFLINE = "La demo interactiva corre en el servidor de VerifiCargo y se coordina en vivo con los jueces. " +
+  "Los resultados de la evaluación están en la pestaña Evaluación."
+
 /** Abre el chat desde la página que lo aloja, opcionalmente con un mensaje. */
 export const OPEN_EVENT = "verificargo:open"
 
@@ -99,7 +103,7 @@ export function ChatWidget({
       setScenarios(s)
       const first = s.find((x) => x.id === scenarioId) ?? s[0]
       if (first) start(first)
-    }).catch((e) => setError(String(e)))
+    }).catch(() => setError(OFFLINE))
     // Solo al montar: cambiar de escenario lo hace el selector.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -29,7 +29,7 @@ declare global {
 
 const script = document.currentScript as HTMLScriptElement | null
 const cfg = script?.dataset ?? {}
-setApiBase(cfg.api ?? (script ? new URL(script.src).origin : ""))
+setApiBase(cfg.api ?? import.meta.env.VITE_API_BASE ?? (script ? new URL(script.src).origin : ""))
 
 function documentLevelRules(source: string): string {
   const rules: string[] = []
